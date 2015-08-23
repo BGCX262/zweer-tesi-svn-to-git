@@ -1,0 +1,12 @@
+\begin{slide}{Scelta del prossimo assegnamento}
+\begin{itemize}
+\item Il vero problema dello scheduling consiste nello scegliere in che passo di controllo assegnare le singole operazioni;
+\item le forze di un'operazione forniscono un ordine di preferenza degli assegnamenti di quella operazione;
+\item se la differenza fra le forze è minima l'ordine può essere sbagliato;
+\item \red nuovo criterio di scelta: \black operazione con differenza maggiore fra forza migliore e forza media:
+\begin{itemize}
+\item maggiore differenza $\Rightarrow$ minor peso dell'errore $\Rightarrow$ minor possibilità di fare una scelta svantaggiosa;
+\item le forze simili possono differenziarsi nelle iterazioni successive.
+\end{itemize}
+\end{itemize}
+\end{slide}

@@ -1,0 +1,36 @@
+Vedi http://docs.google.com/a/neptuny.com/Doc?docid=0AVwhfqSTyFTAZGc2d3NiOHBfNGd6N3c5OWRq&hl=en
+
+Ratings da RPLYTV e FastVCR e VOD
+  
+Info del puro VOD prese da 
+C:\Users\Roby\Documents\University\work\recommenders\Datasets\Fastweb_LSA_20091122+SARWAR20091125\collaborative.mat
+
+
+
+**********
+**********
+
+
+urmFull=mmread('urm.mm');
+itemCacheURMfull=parseItemCache('ITEMSCACHE_URM.mm');
+urmFull_vt_neptuny=mmread('vt.mm');
+urmFull_vt_neptuny=full(urmFull_vt_neptuny);[a,b,ItemTitle_urmFull]=parseItemTitleDat('TitleFull_it_URM.dat');
+
+
+
+
+urmAdp=prepareURMxLSAnew(itemCacheICM,itemCacheURM,urm);
+[icmAdp,itemModelAdp]=prepareURMxLSAnew(itemCacheICM,itemCacheURM,urm,2,itemModel_neptuny,icm);
+%% urmAdp, icmAdp e itemModelAdp si riferiscono alla URM ..\Fastweb_LSA_20091122+SARWAR20091125\collaborative.mat
+
+
+
+**************
+**************
+
+global km_neptuny dictionary_stem dictionary_stemRow
+
+userProfile=zeros(1,size(icm,2)); userProfile(2)=2.5;
+
+computeLSArecommendation(userProfile, ItemTitle_icm,itemModel_neptuny,10,150);
+

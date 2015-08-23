@@ -1,0 +1,136 @@
+\documentclass[bibtex,bwlinks,openright,twoside,fullbib,italian,a4paper,listoffigures,listoftables]{styles/thesis}
+
+\usepackage{ifpdf}
+\usepackage{ifthen}
+
+\ifthenelse{\boolean{pdf}}
+{
+\usepackage[pdftex]{graphicx}
+}{
+\usepackage[dvips]{graphicx}
+}
+
+	
+\usepackage{mathpple}
+%% \usepackage{palatino}
+\usepackage[LGR,T1]{fontenc}
+\def\sfdefault{cmss}
+
+\usepackage{tabularx}
+\usepackage{calc}
+\usepackage{comma}
+\usepackage{listings}
+\usepackage{lscape}
+%\usepackage[numbers,sort&compress]{natbib}
+
+\usepackage[all]{xy}
+
+\usepackage{thumbpdf}
+\usepackage{enumerate}
+\usepackage{dsfont}
+\makeatletter
+\let\comma\@commaform
+\makeatother
+\hyphenation{forces framework benchmark Backtracking Vhsic hardware branch scheduling Directed predecessors' schedulabile successors'}
+
+
+\usepackage[bf,debug]{caption2}[2002/08/03]
+%Definition of caption style
+\newcaptionstyle{rmHang}{%
+  \normalcaptionparams
+  \renewcommand\captionlabelfont{\bfseries}%
+  \renewcommand\captionlabeldelim{.}%
+  \renewcommand\captionsize{\footnotesize}%
+  \onelinecaptionsfalse
+  \usecaptionstyle{hang}}
+\newcaptionstyle{rmCenter}{%
+  \normalcaptionparams
+  \renewcommand\captionlabelfont{\bfseries}%
+  \renewcommand\captionlabeldelim{.}%
+  \renewcommand\captionsize{\footnotesize}%
+  \onelinecaptionsfalse
+  \usecaptionstyle{center}}
+\newcaptionstyle{sfHang}{%
+  \normalcaptionparams
+  \renewcommand\captionlabelfont{\bfseries\sffamily}%
+  \renewcommand\captionlabeldelim{.}%
+  \renewcommand\captionfont{\sffamily}%
+  \renewcommand\captionsize{\footnotesize}%
+  \onelinecaptionsfalse
+  \usecaptionstyle{hang}}
+\newcaptionstyle{sfCenter}{%
+  \normalcaptionparams
+  \renewcommand\captionlabelfont{\bfseries\sffamily}%
+  \renewcommand\captionlabeldelim{.}%
+  \renewcommand\captionfont{\sffamily}%
+  \renewcommand\captionsize{\footnotesize}%
+  \onelinecaptionsfalse
+  \usecaptionstyle{center}}
+% Caption command shortcut
+%\newcommand{\hcaption}[1]{\captionstyle{rmHang}\caption{#1}}
+%\newcommand{\ccaption}[1]{\captionstyle{rmCenter}\caption{#1}}
+\newcommand{\hcaption}[2][nullnullnull]{\captionstyle{rmHang}\ifthenelse{\equal{#1}{nullnullnull}}{\caption{#2}}{\caption[#1]{#2}}}
+\newcommand{\ccaption}[2][nullnullnull]{\captionstyle{rmCenter}\ifthenelse{\equal{#1}{nullnullnull}}{\caption{#2}}{\caption[#1]{#2}}}
+\allowdisplaybreaks
+
+
+\begin{document}
+
+\selectlanguage{italian}
+
+\author{Marco {\sc Lattuada}}
+\title{La Sintesi ad Alto Livello:\\Estensioni al Force Directed Scheduling}{
+\anno{2005/2006}
+\matricola{666801}
+\relatore{Prof. Fabrizio {\sc Ferrandi}}
+\ifthenelse{\boolean{pdf}}
+{
+\universita[./figures/poli.pdf]{Politecnico di Milano}%
+}{
+\universita[./figures/poli.eps]{Politecnico di Milano}%
+}
+{Facolt� di Ingegneria dell'Informazione}%
+{Corso di laurea in Ingegneria Informatica}
+
+
+\include{macros}
+\include{acronyms}
+
+%%% create front page %%%
+\frontmatter
+
+% acknowledgments go here
+\thispagestyle{empty} \normalfont \cleardoublepage
+\include{dedica}
+\thispagestyle{empty}  \cleardoublepage
+\pagenumbering{Roman}
+\pagestyle{plain}
+\mainmatter
+
+\include{intro}
+\include{stato_arte}
+\include{force_original}
+\include{force_my}
+\include{panda_impl}
+\include{results}
+\include{end}
+
+\backmatter
+
+\bibliography{tesi}
+\include{ringraziamenti}
+
+
+%%% create index %%%
+%%\printindex
+
+\end{document}
+
+
+
+\end{document}
+
+
+
+
+

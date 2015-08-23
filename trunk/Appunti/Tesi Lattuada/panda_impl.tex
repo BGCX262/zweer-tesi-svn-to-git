@@ -1,0 +1,252 @@
+\chapter{L'Implementazione all'interno del Progetto PandA}
+\label{c:impl}
+\thispagestyle{empty}
+
+\vspace{0.5cm}
+L'algoritmo del Force Directed scheduling modificato come indicato nel capitolo \ref{c:my} è stato implementato sia per verificare il guadagno reale in termini di qualità del risultato e tempo di computazione grazie a quanto mostrato in \ref{c:my:var} (Proposte di modifiche all'algoritmo originale), sia per verificare il corretto funzionamento e i risultati ottenibili nel caso di introduzione di vincoli sul numero delle risorse disponibili (\ref{c:my:vincoli}). L'implementazione è stata fatta all'interno del progetto PandA (\cite{panda}) per sfruttare i servizi e le funzionalità da esso forniti. Questo progetto verrà descritto nella prima parte di questo capitolo, mentre la seconda parte fornirà alcune informazioni relative all'implementazione realizzata dell'algoritmo di scheduling.
+
+\section{PandA Project}
+PandA è un progetto sviluppato dal Laboratorio di Microarchitetture del Dipartimento di Elettronica e Informazione presso il Politecnico di Milano: l'obiettivo primario del progetto è la realizzazione di un framework in ambiente Linux per la ricerca e la sperimentazione nel campo dell'HW-SW Co-Design. Uno dei suoi sottoprogetti principali all'interno del quale il lavoro presentato si inserisce è quello riguardante la realizzazione di uno strumento automatico per la sintesi ad alto livello. Gli ingressi di questo strumento sono descrizioni di sistema scritte in C, C++ o SystemC mentre il risultato prodotto è costituito da descrizioni in VHDL a livello RTL sintetizzabile.
+
+PandA è realizzato modularmente per permetterne facilmente l'espansione e l'integrazione con nuove funzionalità e nuovi algoritmi. Di seguito verrà data una breve descrizione dei moduli o sottoprogetti con i quali l'algoritmo presentato in questo lavoro di tesi interagisce.
+
+\subsection{Analizzatore delle specifiche}
+Scopo di questo sottoprogetto è trasformare la descrizione di sistema scritta in C, C++ o SystemC in una struttura ad albero. Per facilitare quest'attività si utilizza una delle possibilità offerte dal compilatore GNU GCC (\cite{gcc}): scrivere su file la struttura dell'albero di sintassi che rappresenta il codice sorgente compilato. In questo modo sono ridotte le funzionalità che devono essere implementate a partire da zero direttamente in questo sottoprogetto, fra le quali la parte di ottimizzazione del codice. Il file prodotto viene poi letto dall'analizzatore per estrarre da esso le informazioni necessarie e per identificare le estensioni SystemC presenti. Questi dati vengono memorizzati in una struttura dati anch'essa ad albero che è passata al successivo modulo.
+
+\subsection{Costruttore dei grafi}
+\label{c:impl:panda:graph}
+A partire dalla struttura ad albero prodotta dal sottoprogetto precedente vengono costruiti una serie di grafi utilizzando le librerie BOOST (\cite{boost}). Tali grafi servono a mettere più chiaramente in mostra i diversi tipi di dipendenze presenti fra le varie coppie di operazioni e vengono successivamente utilizzati da diversi moduli di PandA, come ad esempio gli schedulatori. Fra i molteplici grafi prodotti da questo modulo va sottolineata la presenza di quelli che saranno poi utilizzati dal Force Directed scheduling: l'SDG, il grafo dei Blocchi Basici e l'Albero dei Dominatori.
+
+PandA offre anche, soprattutto per funzioni di debugging, la possibilità di costruire questi grafi a partire da descrizione testuali scritte in pseudo-c.
+
+\subsection{Lettore delle informazioni sulla tecnologia e sui vincoli}
+PandA prevede che attraverso due ulteriori file vengano forniti al motore di sintesi ad alto livello sia alcune delle caratteristiche della tecnologia su cui si vuole mappare la funzionalità, sia i vincoli da imporre. In particolare con caratteristiche della tecnologia si intende il fornire per ciascuna delle unità funzionali allocabili:
+\begin{itemize}
+\item il nome dell'unità funzionale;
+\item le operazioni da essa eseguibili;
+\item il tempo di esecuzione di ciascuna operazione;
+\item il numero di porte di ingresso e di uscita e il tipo di dati;
+\item un indice dell'area occupata.
+\end{itemize}
+
+I vincoli forniti riguardano invece la durata del periodo di clock e il numero massimo di unità allocabili per ogni tipo. E' possibile non fornire alcun dato riguardo alla tecnologia: in tal caso PandA utilizzerà quella di default memorizzata all'interno del framework. Se non si impongono vincoli relativamente al numero di unità funzionali di un certo tipo, PandA presupporrà che esse siano potenzialmente allocabili in numero infinito.
+
+\subsection{Schedulatori}
+Il lavoro di tesi presentato fa parte di questo sottoprogetto e contemporaneamente ne usa dei componenti. Da un punto di vista del codice sorgente, come verrà evidenziato in \ref{c:impl:force} la classe che implementa il Force Directed scheduling eredita dalla classe \verb|scheduling| progenitrice di tutte le classi che implementano algoritmi di scheduling; da un punto di visto logico il Force Directed scheduling utilizza direttamente i dati calcolati da ASAP e ALAP. L'ALAP stesso utilizza dei dati forniti dal List-Based, in particolare il numero di passi di controllo totale, quindi l'algoritmo qui presentato utilizza, anche se indirettamente, il List-Based.
+
+\subsection{Sintetizzatore dell'unità di controllo}
+I risultati prodotti dagli algoritmi implementati nel sottoprogetto appena descritto vengono utilizzati dal sintetizzatore dell'unità di controllo. In particolare l'unità di controllo viene modellizzata seguendo il paradigma delle FSMD (\cite{fsmd1}, \cite{fsmd2} e \cite{fsmd3}) e quindi come macchina a stati finiti. Il controllore deve conoscere quali operazioni il datapath deve eseguire ad ogni passo di controllo per poter pilotare correttamente attraverso segnali l'attivazione delle unità funzionali, la scrittura dei dati nei registri, l'eventuale generazione di indirizzi per il trasferimento di dati e i segnali di controllo per i multiplexer. Quali operazioni debbano essere eseguite nei diversi passi di controllo costituisce proprio l'informazione generata dagli algoritmi di scheduling.
+
+\section{Implementazione del Force Directed Scheduling}
+\label{c:impl:force}
+L'implementazione del Force Directed scheduling legge i dati del problema che sono stati ricavati da altri moduli di PandA, in particolare da istanze delle classi \verb|graph_manager| e \verb|technology_manager|. Una volta computata la soluzione al problema presentato, i dati ad essa relativa vengono restituiti attraverso una struttura di tipo \verb|HLS| in cui vengono memorizzati a quale passo di controllo e a quale tipo di unità funzionale sono state assegnate le singole operazioni. Oltre alla classe \verb|force_directed| sono state create altre classi ausiliari: \verb|stackSchedule|, \verb|FDschedule|, \verb|infOp_type| e \verb|job|.
+
+\subsection{Scelte implementative}
+Nel capitolo \ref{c:my} è stata fornita la descrizione di una nuova versione del Force Directed scheduling. Tale descrizione ha evidenziato come a differenza della versione originale quella proposta presenti dei parametri il cui valore può modificare i risultati e il tempo di esecuzione dell'algoritmo. Per poter determinare il valore ottimo di questi parametri sarebbe stata necessaria l'applicazione di ulteriori algoritmi (per esempio algoritmi genetici o a raffinamenti successivi) o l'applicazione di sessioni di test esaustive sufficienti ad offrire una buona copertura di tutto lo spazio dei possibili problemi di scheduling. Quest'attività molto complessa, soprattutto per l'individuazione del set di test adeguato, non fa parte di questo lavoro in quanto comunque si ritiene che utilizzare parametri ottimali rispetto a quelli ipotizzati non produca un evidente aumento nella qualità dei risultati o nei tempi di esecuzione dell'algoritmo. 
+
+Pertanto i parametri sono stati fissati, in parte arbitrariamente ed in parte sulla base dell'esperienza maturata nei test, in questo modo:
+\begin{itemize}
+\item grado iniziale dell'albero: 2
+\item variazione del grado dell'albero al termine della sua esplorazione infruttuosa: il nuovo grado è pari al doppio del precedente grado
+\item peso applicato alla forza relativa ad un predecessore o successore negativa: 0.001
+\item valore fissato di una forza relativa ad un assegnamento impossibile o che provoca un assegnamento impossibile: 100
+\item scelta nella funzione per stabilire il prossimo assegnamento da effettuare (confrontare \ref{c:my:vincoli:next}): è stata introdotta la possibilità di lasciare la scelta all'utente; in questo modo è possibile confrontare i risultati su qualsiasi problema.
+\end{itemize}
+
+\subsection{Diagrammi di classe e Diagrammi di Collaborazione}
+Vengono ora elencate le classi realizzate per implementare il Force Directed scheduling e riportati i loro Diagrammi di Classe/di Collaborazione:
+
+\subsubsection{stackSchedule}
+Un oggetto di questa classe memorizza i dati di un assegnamento effettuato o di un assegnamento bloccato in quanto già effettuato e successivamente cancellato. All'interno di esso sono memorizzati:
+\begin{itemize}
+\item i dati relativi all'operazione: identificatore, blocco basico di appartenenza, priorità;
+\item i dati relativi all'assegnamento: tipo di unità funzionale e passo di controllo;
+\item se l'assegnamento è stato effettuato o bloccato;
+\item l'ASAP e l'ALAP dell'operazione precedenti all'assegnamento; questi dati sono utilizzati quando e se l'assegnamento viene annullato;
+\item la finestra temporale influenzata da questo assegnamento, cioè i passi di controllo in cui la percentuale di occupazione riferita a qualche tipo di unità funzionale è stata modificata a seguito dell'assegnamento stesso; anche questi dati vengono utilizzati nel momento dell'eventuale annullamento dell'assegnamento.
+\end{itemize}
+
+\newpage
+\begin{figure}[h!]
+\centering
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics{figures/stackSchedule.pdf}
+}{
+\includegraphics{figures/stackSchedule.eps}
+}
+\ccaption{Diagramma della classe stackSchedule}
+\label{f:stackSchedule}
+\end{figure}
+
+\subsubsection{FDschedule}
+Un oggetto di questa classe memorizza i dati di un possibile assegnamento non ancora effettuato. All'interno di esso sono memorizzati:
+\begin{itemize}
+\item i dati relativi all'operazione: identificatore, blocco basico di appartenenza, priorità;
+\item i dati relativi all'assegnamento: tipo di unità funzionale, passo di controllo e se è bloccato o meno;
+\item il valore della forza corrispondente;
+\item la finestra temporale influenzata da questo assegnamento, cioè i passi di controllo in cui la percentuale di occupazione riferita a qualche tipo di unità funzionale è stata modificata a seguito dell'assegnamento stesso; questi passi di controllo coincidono con quelli in cui la variazione della percentuale di occupazione relativa ad un tipo di unità funzionale potrebbe provocare la variazione di forza relativa all'assegnamento contenuto nell'istanza; questi dati sono utilizzati dall'algoritmo per evitare di ricalcolare ad ogni iterazione tutte le forze e limitarsi al calcolo di quelle modificate dall'ultimo assegnamento o dall'ultima cancellazione di un assegnamento.
+\end{itemize}
+
+\begin{figure}[h!]
+\centering
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics{figures/FDschedule.pdf}
+}{
+\includegraphics{figures/FDschedule.eps}
+}
+\ccaption{Diagramma della classe FDschedule}
+\label{f:FDschedule}
+\end{figure}
+
+\subsubsection{infOp\_type}
+Un oggetto di questa classe memorizza i dati relativi alla percentuale di occupazione di un certo tipo di unità funzionale da parte di un'operazione in un passo di controllo. Da questi dati si ricavano le percentuali di occupazione complessive. La coppia <unità funzionale-passo di controllo> non è indicata al suo interno perchè la classe \verb|force_directed| costruisce una lista di \verb|infOp_type| diversa per ciascuna coppia. All'interno di un'istanza di \verb|infOp_type| vengono memorizzati:
+\begin{itemize}
+\item i dati dell'operazione: identificatore, blocco basico di appartenenza e se è gia stata assegnata;
+\item la percentuale di occupazione;
+\item l'elenco dei blocchi basici in mutua esclusione con quello dell'operazione indicata nell'istanza stessa e ai quali appartiene almeno un'operazione schedulabile con probabilità non nulla nello stesso passo di controllo e sullo stesso tipo di unità funzionale del possibile assegnamento sottinteso dall'istanza stessa; queste liste sono utilizzate per limitare il numero di blocchi basici da collassare durante il calcolo delle percentuali di occupazione nel caso di presenza di costrutti condizionali (\ref{c:impl:force:prob});
+\item nel caso di operazioni multiciclo se l'operazione può essere schedulata nel passo di controllo sottinteso o se l'occupazione dell'unità funzionale si riferisce ad una operazione schedulabile nei passi di controllo precedenti la cui esecuzione potrebbe non essere ancora terminata nel passo di controllo sottinteso.
+\end{itemize}
+
+\begin{figure}[h!]
+\centering
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics{figures/infOp_type.pdf}
+}{
+\includegraphics{figures/infOp_type.eps}
+}
+\ccaption{Diagramma della classe infOp\_type}
+\label{f:infOp}
+\end{figure}
+
+\subsubsection{job}
+Un oggetto di questa classe memorizza i dati relativi alla restrizione di un predecessore o di un successore a seguito di uno scheduling. Ogni volta che si calcola una forza viene creata una lista di questi oggetti per memorizzare la restrizione della finestra di mobilità di ogni predecessore o successore; per ciascuna restrizione si dovrà calcolare il contributo alla \emph{predecessors' and successors' force} corrispondente. 
+
+Dopo aver calcolato il contributo relativo alla restrizione della finestra di un predecessore (successore), si calcolano anche le eventuali riduzioni di mobilità cui sono soggetti i suoi diretti predecessori (successori) e si aggiungono alla lista. Mantenendo gli oggetti ordinati in base all'ordinamento topografico delle operazioni nel SDG (questo se si riferiscono a restrizioni delle mobilità dei successori; per i predecessori l'ordine è quello inverso) si garantisce che il contributo di forza relativo ad un predecessore o ad un successore verrà calcolato un'unica volta. Infatti se si fossero usate tecniche ricorsive per il calcolo delle forze poteva accadere per esempio che il contributo di un predecessore, se questo era legato tramite due diversi percorsi all'operazione di cui si sta calcolando la forza, venisse considerato due volte. Le informazioni memorizzate da un oggetto di questa classe sono:
+\begin{itemize}
+\item identificatore dell'operazione;
+\item posizione dell'operazione nell'ordinamento topologico del SDG;
+\item nuova finestra temporale dell'operazione a seguito dell'ipotesi di assegnamento;
+\item mobilità dell'operazione a seguito dell'ipotesi di assegnamento (esplicitata per permettere l'ordinamento fra due istanze relative alla stessa operazione).
+\end{itemize}
+
+
+\begin{figure}[h!]
+\centering
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics{figures/job.pdf}
+}{
+\includegraphics{figures/job.eps}
+}
+\ccaption{Diagramma della classe job}
+\label{f:job}
+\end{figure}
+
+\subsubsection{force\_directed}
+La classe \verb|force_directed| implementa il Force Directed scheduling; eredita come tutti gli algoritmi di scheduling implementati in PandA dalla classe \verb|scheduling|. Le strutture dati contenute in essa memorizzano:
+\begin{itemize}
+\item i dati del problema di scheduling:
+\begin{itemize}
+\item il grafo SDG;
+\item le caratteristiche delle unità funzionali e i vincoli sul loro numero;
+\item l'ordinamento topologico, il tipo, l'ASAP e l'ALAP delle operazioni;
+\item le caratteristiche dei diversi tipi di operazione;
+\end{itemize}
+\item la priorità assegnata alle operazioni;
+\item il grado attuale dell'albero di ricerca;
+\item il criterio di scelta del prossimo assegnamento selezionato;
+\item le operazioni già assegnate e il numero di operazioni ancora da assegnare;
+\item il numero di soluzioni anche parziali che non soddisfano i vincoli incontrate durante la ricerca;
+\item l'elenco delle mutue esclusioni fra blocchi basici e fra operazioni;
+\item per ciascun tipo di unità funzionale il numero utilizzato in ciascun passo di controllo e il binding delle operazioni sulle unità funzionali;
+\item le forze relative a tutti gli assegnamenti possibili;
+\item le percentuali di occupazione, totali e relative alle singole operazioni, dei diversi tipi di unità funzionale nei diversi passi di controllo.
+\end{itemize}
+
+La classe oltre al costruttore fornisce due metodi pubblici: il primo computa l'algoritmo, il secondo stampa informazioni riguardo ad esso. I metodi privati invece sono più numerosi; i servizi che essi offrono sono:
+\begin{itemize}
+\item inizializzazione delle strutture dati riguardanti i dati del problema di scheduling;
+\item inizializzazione delle strutture dati riguardanti le unità funzionali;
+\item eliminazione di un'operazione dalle liste contenenti le percentuali di occupazione relative;
+\item inserimento di un'operazione nelle liste contenenti le percentuali di occupazione relative;
+\item calcolo delle mutue esclusioni fra operazioni schedulabili in un certo passo di controllo;
+\item calcolo delle percentuali di occupazione totali;
+\item restrizione della finestra temporale di un'operazione e conseguente ricalcolo delle percentuali di occupazione;
+\item calcolo degli immediati predecessori di un'operazione;
+\item calcolo degli immediati successori di un'operazione;
+\item calcolo della forza di un assegnamento;
+\item calcolo della \emph{self-force} di un assegnamento;
+\item calcolo delle \emph{predecessors' and successors' force} di un assegnamento;
+\item calcolo del prossimo assegnamento da effettuare;
+\item calcolo del miglior tempo di esecuzione di un'operazione;
+\item calcolo del binding di un'operazione su un'unità funzionale;
+\item cancellazione di un binding già effettuato.
+\end{itemize}
+
+
+\newpage
+\begin{figure}[h!]
+\centering
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.4]{figures/force_directed.pdf}
+}{
+\includegraphics[scale = 0.4]{figures/force_directed.eps}
+}
+\ccaption{Diagramma della classe force\_directed}
+\label{f:force}
+\end{figure}
+
+\newpage
+\subsection{Calcolo delle somme di probabilità}
+\label{c:impl:force:prob}
+Viene ora fornita la soluzione adottata nell'implementazione per risolvere il problema di calcolare le somme di probabilità (e quello equivalente di calcolare le percentuali di occupazione) indicate in \ref{c:ori:core:prob}. Questo sia perchè da un punto di vista implementativo questa funzione risulta la più critica, sia perchè in letteratura non si trovano descrizioni di possibili metodi per risolvere questo particolare problema ed esso non è di facile soluzione se non con metodi esaustivi e quindi di complessità esponenziale. 
+
+La funzione lavora su liste di operazioni che possono essere eseguite da un tipo di unità funzionale in un determinato passo di controllo. Tali operazioni sono ordinate secondo due chiavi:
+\begin{enumerate}
+\item il numero di blocchi basici che sono in mutua esclusione con quello dell'operazione e a cui appartiene almeno un'altra operazione della lista;
+\item l'ordinamento lessicografico (secondo la rappresentazione interna) del blocco basico cui appartengono.
+\end{enumerate}
+La prima chiave, per la quale si usa l'ordinamento decrescente (l'ordinamento utilizzato per la seconda chiave è ininfluente così come l'ordinamento fra operazioni che abbiano le stesse chiavi), che è facilmente calcolabile, comporta che i blocchi basici che costituiscono i diversi rami dei costrutti condizionali annidati più internamente si trovino nelle prime posizioni della lista, mentre i blocchi basici relativi a segmenti non condizionati del problema si trovano nella sua parte terminale.
+
+Per ogni blocco basico, una cui operazione è presente nella lista, si crea una struttura dati che contiene le informazioni relative al blocco basico stesso, le due chiavi utilizzate per l'ordinamento delle operazioni, una lista di quali siano i blocchi basici con cui esso è in mutua esclusione e un valore detto probabilità pari alla somma delle probabilità delle operazioni che si trovano nella lista e che appartengono a quel blocco basico. I blocchi basici che hanno la prima chiave pari a zero vengono trascurati e la probabilità delle operazioni ad essi appartenenti viene sommata direttamente alla soluzione finale che inizialmente è posta pari a zero. Gli altri blocchi basici vengono ordinati in una nuova lista con lo stesso tipo di ordinamento illustrato per le operazioni.
+
+A questo punto scorrendo la lista si individua la coppia di blocchi basici appartenenti ai rami di uno dei costrutti condizionali più annidati e si collassano: le informazioni del nuovo blocco basico coincideranno con quelle di uno qualsiasi dei due ad eccezione della probabilità che sarà pari al valore maggiore fra le due. Il blocco basico così creato potrebbe trovarsi concatenato con uno o più blocchi basici (concatenazione in questo senso: due o più blocchi basici sono concatenati se sono legati da archi di controllo e nessun altro blocco basico ad eccezione dei predecessori del primo e dei successori dell'ultimo è legato con un arco di controllo ad uno di essi). I blocchi concatenati si fondono mantenendo le informazioni di uno qualsiasi di essi ad eccezione della probabilità che viene posta pari alla sommatoria di quelle dei blocchi originari. In questo modo è come se nel grafo dei blocchi basici fosse stata eliminata la biforcazione relativa al costrutto condizionale più annidato. Ad ogni iterazione si mantiene ordinata la lista dei blocchi basici che vede ridursi il numero dei suoi elementi. A questo punto basta applicare ripetutamente quanto descritto fino ad eliminare la biforcazione nel grafo relativa all'ultimo costrutto condizionale superstite. La probabilità del blocco superstite verrà sommata a quella della soluzione ottenuta fino a quel momento ottenendo così il valore definitivo.
+
+La complessità di questo metodo è pari a $O(B^4)$ dove $B$ è il numero dei blocchi basici presenti nel grafo omonimo.
+
+\subsection{Calcolo della mutua esclusione fra le operazioni}
+Un altro aspetto critico nell'implementazione dell'algoritmo è la parte che riguarda il calcolo delle mutue esclusioni fra operazioni. La soluzione proposta lavora a livello di blocchi basici (se due operazioni appartengono a due blocchi basici in mutua esclusione allora saranno esse stesse in mutua esclusione) e si basa sull'Albero dei Dominatori.
+
+Inizialmente si compie una visita inversa breadth-first dell'Albero dei Dominatori durante la quale si memorizzano i discendenti di ciascun nodo. A questo punto si esegue nuovamente una visita breadth-first (questa volta non inversa) dell'Albero dei Dominatori. Gli assegnamenti da compiere durante la seconda visita si differenziano a seconda del tipo di blocco basico:
+
+\begin{itemize}
+\item Nodo Radice:
+
+nessun assegnamento
+
+\item Nodo di un blocco basico corrispondente ad un ramo then:
+
+la lista dei blocchi basici con cui esso è in esclusione è posta uguale all'unione di:
+\begin{itemize}
+\item il blocco basico che corrisponde ad un ramo else e il cui nodo è fratello di quello del nodo in oggetto (se presente);
+\item i discendenti del blocco basico indicato al punto precedente (se presente) che sono già stati calcolati durante la prima visita;
+\item i blocchi basici in mutua esclusione con il blocco basico rappresentato dal genitore del nodo in oggetto; sono già stati calcolati perchè la seconda visita è discendente.
+\end{itemize}
+
+\item Nodo di un blocco basico corrispondente ad un ramo else:
+
+la lista dei blocchi basici con cui esso è in esclusione è posta uguale all'unione di:
+\begin{itemize}
+\item il blocco basico che corrisponde ad un ramo then e il cui nodo è fratello di quello del nodo in oggetto;
+\item i discendenti del blocco basico indicato al punto precedente che sono già stati calcolati durante la prima visita;
+\item i blocchi basici in mutua esclusione con il blocco basico rappresentato dal genitore del nodo in oggetto; sono già stati calcolati perchè la seconda visita è discendente.
+\end{itemize}
+
+\item Nodo di un blocco basico di tipo endif:
+
+la lista dei blocchi basici con cui esso è in esclusione è posta uguale alla lista delle mutue esclusioni del padre già calcolata.
+\end{itemize}

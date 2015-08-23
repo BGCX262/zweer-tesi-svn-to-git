@@ -1,0 +1,450 @@
+#! /bin/sh
+# tex_compile --- produce DVI (or PDF) files from Texinfo (or LaTeX) sources.
+#
+# Copyright (C) 1992, 93, 94, 95, 96, 97, 98, 99, 2001, 02
+# Free Software Foundation, Inc.
+#
+# tex_compile is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2, or (at your option)
+# any later version.
+#
+# tex_compile is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with tex_compile; see file COPYING.  If not, write to: The
+# Free Software Foundation, Inc.; 59 Temple Place, Suite 330; Boston,
+# MA 02111-1307, USA.
+#
+# Original author: Noah Friedman <friedman@gnu.org>.
+# Please send bug reports, etc. to bonzini@gnu.org.
+
+version="tex_compile
+
+Based on texi2dvi.
+Copyright (C) 2002 Free Software Foundation, Inc.
+There is NO warranty.  You may redistribute this software
+under the terms of the GNU General Public License.
+For more information about these matters, see the files named COPYING."
+
+usage="Usage: tex_compile [OPTION]... FILE...
+
+Run each LaTeX FILE through TeX in turn until all cross-references are
+resolved, building all indices.  The directory containing each FILE is
+searched for included files.
+
+Operation modes:
+  -h, --help          display this help and exit successfully
+  -v, --version       display version information and exit successfully
+  -V, --verbose       report on what is done (can specify once or twice)
+  -f, --force         rerun auxiliary programs from scratch
+  -e, --etex          use elatex or pdfelatex for processing
+  -p, --pdf           use pdflatex for processing
+
+  -I DIR              search DIR for Texinfo files
+  -o OUTPUTDIR        output directory
+
+
+The values of the BIBTEX, GFTOPK, LATEX (and/or PDFLATEX), MAKEINDEX,
+KPSEWHICH, MF, and MPOST, environment variables are used to run
+those commands, if they are set.
+
+Email bug reports to <bug-texinfo@gnu.org>,
+general questions and discussion to <help-texinfo@gnu.org>.
+Texinfo home page: http://www.gnu.org/software/texinfo/"
+
+# Initialize variables for option overriding and otherwise.
+# Don't use `unset' since old bourne shells don't have this command.
+# Instead, assign them an empty value.
+oformat=dvi
+whichtex=tex
+force=false     # : for force mode
+txincludes=     # TEXINPUTS extensions
+texincludes=    # TEX inclusions
+verbose=0       # 0, 1, or 2
+orig_pwd=`pwd`
+outputdir=`pwd`
+
+export BSTINPUTS=`pwd`/styles
+
+# Save this so we can construct a new TEXINPUTS path for each file.
+MFINPUTS_orig="$MFINPUTS"
+MPINPUTS_orig="$MPINPUTS"
+TEXINPUTS_orig="$TEXINPUTS"
+BIBINPUTS_orig="$BIBINPUTS"
+INDEXSTYLE_orig="$INDEXSTYLE"
+
+# Push a token among the arguments that will be used to notice when we
+# ended options/arguments parsing.
+# Use "set dummy ...; shift" rather than 'set - ..." because on
+# Solaris set - turns off set -x (but keeps set -e).
+# Use ${1+"$@"} rather than "$@" because Digital Unix and Ultrix 4.3
+# still expand "$@" to a single argument (the empty string) rather
+# than nothing at all.
+arg_sep="$$--$$"
+set dummy ${1+"$@"} "$arg_sep"; shift
+
+# 
+# Parse command line arguments.
+while test x"$1" != x"$arg_sep"; do
+
+  # Handle --option=value by splitting apart and putting back on argv.
+  case "$1" in
+    --*=*)
+      opt=`echo "$1" | sed -e 's/=.*//'`
+      val=`echo "$1" | sed -e 's/[^=]*=//'`
+      shift
+      set dummy "$opt" "$val" ${1+"$@"}; shift
+      ;;
+  esac
+
+  # This recognizes --punk as --pdf.  So what.
+  case "$1" in
+    # Silently and without documentation accept -b and --b[atch] as synonyms.
+    -h | --h*) echo "$usage"; exit 0;;
+    -o | --o*) shift; case "$1" in
+	/*) outputdir="$1";;
+	*) outputdir="`pwd`/$1";;
+    esac;;
+    -I | --i*) shift; case "$1" in
+	/*) txincludes="$txincludes:$1";;
+	*) txincludes="$txincludes:`pwd`/$1";;
+    esac;;
+    -II | --ii*) shift; case "$1" in
+	/*) texincludes="$texincludes:$1";;
+	*) texincludes="$texincludes:`pwd`/$1";;
+    esac;;
+    -e | --e*) whichtex=etex;;
+    -p | --p*) oformat=pdf;;
+    -v | --vers*) echo "$version"; exit 0;;
+    -f | --f*) force=:;;
+    -V | --verb*) verbose=`expr $verbose + 1`;;
+    -VV) verbose=`expr $verbose + 2`;;
+    --) # What remains are not options.
+      shift
+      while test x"$1" != x"$arg_sep"; do
+        set dummy ${1+"$@"} "$1"; shift
+        shift
+      done
+      break;;
+    -*)
+      echo "$0: Unknown or ambiguous option \`$1'." >&2
+      echo "$0: Try \`--help' for more information." >&2
+      exit 1;;
+    *) set dummy ${1+"$@"} "$1"; shift;;
+   esac
+   shift
+done
+# Pop the token
+shift
+
+# Set up the path to the tools we need
+kpsewhich=${KPSEWHICH:-kpsewhich}
+bibtex=${BIBTEX:-bibtex}
+makeindex=${MAKEINDEX:-makeindex}
+mfont="${MF:-mf}"
+gftopk="${GFTOPK:-gftopk}"
+case $whichtex in
+  tex)  mpost="${MPOST:-mpost} -tex=${LATEX:-latex}" ;;
+  etex) mpost="${MPOST:-mpost} -tex=${ELATEX:-elatex}" ;;
+esac
+case $whichtex:$oformat in
+  tex:dvi)  tex="${LATEX:-latex}" ;;
+  etex:dvi) tex="${ELATEX:-elatex}" ;;
+  tex:pdf)  tex="${PDFLATEX:-pdflatex}" ;;
+  etex:pdf) tex="${PDFELATEX:-pdfelatex}" ;;
+esac
+
+# Interpret remaining command line args as filenames.
+if [ $# = 0 ]; then
+  echo "$0: Missing file arguments." >&2
+  echo "$0: Try \`--help' for more information." >&2
+  exit 2
+fi
+
+# Echo the arguments on file descriptor 5 and on the TTY.
+# if in verbose mode.
+verbose_echo() {
+  test $verbose -ge 1 && echo "$*"
+}
+
+# Run a command with redirection on a .tty file,
+# and printing the command line on stdout in verbose mode.
+run_nofail() {
+  verbose_echo ">>> $*"
+
+  # File descriptor usage:
+  # 0 standard input
+  # 1 standard output
+  # 2 standard error
+  # 3 some systems may open it to /dev/tty
+  # 4 used on the Kubota Titan
+  # 5 tools output
+  exec 5>&1
+  rm -f "$filenoext.tty"
+  touch "$filenoext.tty"
+  case $verbose in
+    0) exec 5> /dev/null ;;
+    1) exec 5> "$filenoext.tty" ;;
+  esac
+
+  "$@" < /dev/null 2>&5 1>&2
+  return $?
+}
+
+# Report the reason why we rerun LaTeX
+rerun_because ()
+{
+  if test -z "$rerun_why"; then
+    rerun_why="Rerunning TeX because $*"
+    finished=false
+    bad=false
+  fi
+}
+
+# Run a command as in run_nofail, but also exit if there is a problem.
+run ()
+{
+  run_nofail "$@" && return
+  cat "$filenoext.tty"
+  echo "$0: $1 exited with bad status, quitting." >&2
+  exit 1
+}
+
+# A shell function that looks for a bib file given a list of aux files
+aux2bib() {
+  $kpsewhich bib "`sed -e '/^.bibdata{\(.*\)}.*/!d' \
+		      -e 's//\1.bib/' \
+		      -e q "$@"`"
+}
+
+# A shell function that computes the list of xref files.
+# Takes the filename (without extension) of which we look for xref
+# files as argument.  The index files must be reported last.
+# Get list of xref files (indexes, tables and lists).
+# .?o? catches LaTeX tables of contents and lists.
+get_xref_files () {
+  for this_file in *.mp *.mf "$1".?o? "$1".aux "$1".idx; do
+    test "$this_file" = "$1".log && continue
+    # If file is empty, skip it.
+    test -s "$this_file" || continue
+    echo "./$this_file"
+  done
+}
+
+
+# 
+# LaTeXify files.
+
+for filename in ${1+"$@"}; do
+  verbose_echo "Processing $filename ..."
+
+  # If the COMMAND_LINE_FILENAME is not absolute (e.g., --debug.tex),
+  # prepend `./' in order to avoid that the tools take it as an option.
+  echo "$filename" | egrep '^(/|[A-z]:/)' >/dev/null \
+  || filename="./$filename"
+
+  # See if the file exists.  If it doesn't we're in trouble since
+  # we run latex in \nonstopmode; and anyway, this script wouldn't
+  # be able to find the right xref files and so forth.
+  if test ! -r "$filename"; then
+    echo "$0: Could not read $filename, skipping." >&2
+    continue
+  fi
+
+  # Get the name of the current directory.  We want the full path
+  # because we are in tmp, and a relative path has no meaning.
+  filepath=`echo $filename | sed 's!/[^/]*$!!;s!^$!.!'`
+  filepath=`cd "$filepath" >/dev/null && pwd`
+
+  # Strip directory part but leave extension.
+  filename=`basename "$filename"`
+
+  # Strip extension.
+  filenoext=`echo "$filename" | sed 's/\.[^.]*$//'`
+
+  # Temporary directories.
+  tmpdir=$outputdir/tex_compile_tmp
+  bakdir=$outputdir/tex_compile_bak
+
+  # Make all these directories and give up if we can't succeed.
+  # Remove the temporary directory at exit.
+  trap "cd / && rm -rf $bakdir" 0 1 2 15
+  $force && rm -rf $tmpdir
+  test -d $bakdir || mkdir $bakdir || exit 1
+  test -d $tmpdir || mkdir $tmpdir || exit 1
+  cp "$filepath/$filename" $tmpdir
+  echo $texincludes
+  for i in `echo $texincludes | awk 'BEGIN{RS=":"} {print $1} END{}'`;do cp -r $i $tmpdir;done
+  $force || cp -r $tmpdir/* $bakdir
+
+  # Source file might include additional sources.  Put `.' and
+  # directory where source file(s) reside in TEXINPUTS before anything
+  # else.  `.' goes first to ensure that any old .aux, .cps,
+  # etc. files in ${directory} don't get used in preference to fresher
+  # files in `.'.
+  MFINPUTS=".:$filepath:$txincludes:$MFINPUTS_orig"
+  MPINPUTS=".:$filepath:$txincludes:$MPINPUTS_orig"
+  TEXINPUTS=".:$filepath:$txincludes:$TEXINPUTS_orig"
+  BIBINPUTS=".:$filepath:$txincludes:$BIBINPUTS_orig"
+  INDEXSTYLE=".:$filepath:$txincludes:$INDEXSTYLE_orig"
+  export MFINPUTS MPINPUTS TEXINPUTS BIBINPUTS INDEXSTYLE
+
+  # move to the temporary directory.
+  cd "$tmpdir" || exit 1
+
+  first_run=:
+  while :; do # will break out of loop below
+    orig_xref_files=`get_xref_files "$filenoext"`
+
+    # Save copies of originals for later comparison.
+    if test -n "$orig_xref_files"; then
+      cp $orig_xref_files $bakdir
+    fi
+
+    # Run bibtex on current file.
+    # - If its input (AUX) exists.
+    # - If AUX contains both `\bibdata' and `\bibstyle'.
+    # - If the LOG complains of a missing BBL, or the bib file
+    #   is newer than the BBL file.
+    #
+    # We run bibtex first, because I can see reasons for the indexes
+    # to change after bibtex is run, but I see no reason for the
+    # converse.
+    #
+    # Don't try to be too smart.  Running bibtex only if the bbl file
+    # exists and is older than the LaTeX file is wrong, since the
+    # document might include files that have changed.  Because there
+    # can be several AUX (if there are \include's), but a single LOG,
+    # looking for missing citations in LOG is easier, though we take
+    # the risk to match false messages.
+    if (test -n "$bibtex" \
+        && test -r "$filenoext.aux" \
+        && grep '^\\bibdata[{]'  "$filenoext.aux" \
+        && grep '^\\bibstyle[{]' "$filenoext.aux" \
+        && (grep 'No file .*\.bbl\.' "$filenoext.log" \
+            || grep 'Citation.*undefined' "$filenoext.log" \
+            || test "`aux2bib "$filenoext.aux"`" -nt "$filenoext.aux")) \
+        >/dev/null 2>&1
+    then
+      run $bibtex "$filenoext"
+    fi
+
+    # What we'll run makeindex on -- exclude non-index files.
+    # Since we know index files are last, it is correct to remove everything
+    # before .aux and .?o?.
+    index_files=`echo "$orig_xref_files" \
+                 | sed "s!.*\.aux!!g;
+                        s!.*\.m[pf]!!g;
+                        s!.*\.[0-9]*pk!!g;
+                        s!.*\..o.!!g;
+                        s/^[ ]*//;s/[ ]*$//"`
+
+    # Run makeindex on current index files.  If they already exist,
+    # and after running TeX a first time the index files don't change,
+    # then there's no reason to run TeX again.  But we won't know that
+    # if the index files are out of date or nonexistent.
+    if test -n "$makeindex" && test -n "$index_files"; then
+      run $makeindex $index_files
+    fi
+
+    # Used to decide if looping again is needed.
+    finished=:
+    rerun_why=
+    if run_nofail $tex \\nonstopmode \\input "$tmpdir/$filename"; then
+      bad=false
+    else
+      bad=:
+    fi
+    rm -f missfont.log
+
+    # Check for mfpic or mppic
+    if $first_run \
+       && fgrep "Apply metafont" "$filenoext.log" >/dev/null 2>&1; then
+      if $bad; then
+        rerun_because "fonts were missing..."
+      fi
+      mfsource="`sed -n 's/.*Apply metafont to \(.*\.mf\).*/\1/p' "$filenoext.log"`"
+      mflog="`echo $mfsource | sed 's/mf$/log/' `"
+      # This helps but is not necessary
+      perl -i -pe 's/^%.*//' "$mfsource" 2>/dev/null
+      run $mfont "$mfsource"
+
+      gfsource="`sed -n 's/^Output written on *\(.*\.[0-9]*gf\).*/\1/p' "$mflog"`"
+      run $gftopk "$gfsource"
+      run cp -p "`echo $gfsource | sed 's/gf$/pk/' `" "$outputdir"
+      run cp -p "`echo $mfsource | sed 's/mf$/tfm/' `" "$outputdir"
+    fi
+    if $first_run \
+       && fgrep "Apply metapost" "$filenoext.log" >/dev/null 2>&1; then
+      if $bad; then
+        rerun_because "pictures were missing..."
+        bad=false
+      fi
+      mpsource="`sed -n 's/.*Apply metapost to \(.*\.mp\).*/\1/p' "$filenoext.log"`"
+      mplog="`echo $mpsource | sed 's/mp$/log/' `"
+      # This helps but is not necessary
+      perl -i -pe 's/^%.*//' "$mpsource" 2>/dev/null
+      run $mpost "$mpsource"
+    fi
+   
+    if $bad; then
+      cat "$filenoext.tty"
+      cp "$filenoext.log" "$outputdir"
+      echo "$0: $tex exited with bad status, quitting." >&2
+      test $verbose = 0 && echo "$0: see $filenoext.log for errors." >&2
+      exit 1
+    fi
+
+    # LaTeX reports in the LOG file if it should be rerun.  This speeds
+    # up the decision, and it is also needed for files included from
+    # subdirs, since we do not try to compare xref files in subdirs.
+    if $finished; then
+      if fgrep "Rerun to get" "$filenoext.log" >/dev/null 2>&1; then
+        rerun_because "LaTeX advised us to do so..."
+      fi
+    fi
+
+    # If old and new lists don't at least have the same file list,
+    # then one file or another has definitely changed.  Again,
+    # this speeds up the decision.
+    if $finished; then
+      # Check if xref files changed.
+      new_xref_files=`get_xref_files "$filenoext"`
+
+      if test "x$orig_xref_files" != "x$new_xref_files"; then
+        rerun_because "list of auxiliary files changed..."
+      fi
+    fi
+
+    if $finished; then
+      # File list is the same.  Check if the contents are the same.
+      for this_file in $new_xref_files; do
+        # cmp -s returns nonzero exit status if files differ.
+        if cmp -s "$this_file" "$bakdir/$this_file"; then :; else
+          rerun_because "auxiliary file `echo $this_file | sed 's|\./||g'` changed..."
+          # We only need to keep comparing until we find one that differs.
+          break
+        fi
+      done
+
+      # If finished, exit the loop, else rerun the loop.
+      $finished && break
+    fi
+    first_run=false
+    verbose_echo "$rerun_why"
+  done
+
+  # Copy the DVI or PDF file into the directory from where we were launched.
+  run cp -p "$filenoext.$oformat" "$outputdir"
+
+  # Return to the original directory, so that the next file is
+  # processed in correct conditions
+  cd $orig_pwd || exit 1
+done
+
+verbose_echo "Done."
+exit 0 # exit successfully, not however we ended the loop.

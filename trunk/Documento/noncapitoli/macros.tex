@@ -1,0 +1,32 @@
+% Comando per il corsivo
+\newcommand{\corsivo}[1]{\textit{#1}}
+
+% Comando per il grassetto
+\newcommand{\grassetto}[1]{\textbf{#1}}
+
+% Comando per il sottolineato
+\newcommand{\sottolineato}[1]{\underline{#1}}
+
+% Comando per la nota
+\newcommand{\nota}[1]{\footnote{#1}}
+
+% Comando per la nota della bozza
+\newcommand{\notabozza}[1]{\nota{\grassetto{Nota Bozza:} #1}}
+
+% Comando per gli apici
+\newcommand{\apice}[1]{\textsuperscript{#1}}
+
+% Comando per i pedici
+\makeatletter 
+  \DeclareRobustCommand*\textsubscript[1]{% 
+    \@textsubscript{\selectfont#1}} 
+  \newcommand{\@textsubscript}[1]{% 
+    {\m@th\ensuremath{_{\mbox{\fontsize\sf@size\z@#1}}}}} 
+\makeatother 
+\newcommand{\pedice}[1]{\textsubscript{#1}}
+
+% Comando per i quote da usare come note
+\newcommand{\quotenota}[1]{\begin{initialquote}\grassetto{Nota di bozza:} #1\end{initialquote}}
+
+% Stile Matlab per LstListing
+\lstdefinestyle{Matlab}{language=Matlab}

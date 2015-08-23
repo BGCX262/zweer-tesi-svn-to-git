@@ -1,0 +1,456 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%%  Prosper -- (PPRmulab.sty) Style file
+%%  A LaTeX class for creating slides
+%%  Author: Livio Dalloro <dalloro@users.sourceforge.net>
+%%
+%%  *************************************
+%%      Micro Architetture Laboratory         			  
+%%       Politecnico di Milano - DEI				  
+%%  *************************************
+%%  URL: www.micro.elet.polimi.it
+%%
+%%  Copyright (c) 2004 Livio Dalloro
+%%										  
+%%  This style file for Prosper is free software; you can redistribute
+%%  it and/or modify it under the terms of the GNU General Public
+%%  License as published by the Free Software Foundation; either
+%%  version 2 of the License, or (at your option) any later version.  
+%%
+%%  This program is distributed in the hope that it will be useful,
+%%  but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%  General Public License for more details. 
+%%
+%%  You should have received a copy of the GNU General Public License
+%%  along with this program; if not, write to the Free Software
+%%  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+%%  02111-1307, USA. 
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
+
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\ProvidesPackage{PPRmulab}[2004/09/21]
+\typeout{Politecnico di Milano -- Micro Architetture Laboratory (MuLAB) style for Prosper ---}
+\typeout{(copyleft) 2004, Livio Dalloro}
+\typeout{ }
+
+\RequirePackage{amssymb}
+% Loading packages necessary to define this slide style.
+\IfFileExists{pst-grad}{\RequirePackage{pst-grad}}{\RequirePackage{gradient}}
+
+% Color definitions
+\newrgbcolor{mulabblue}{0.24 0.45 0.70}
+\newrgbcolor{mulablightblue}{0.43 0.61 0.84}
+\newrgbcolor{mulabdarkblue}{0.14 0.34 0.55}
+\newrgbcolor{mulabroyalblue}{0.06 0.25 0.41}
+\newrgbcolor{mulabfaintblue}{0.88 0.95 1.00}
+\newrgbcolor{mulabcolor}{0.23 0.42 0.68}
+\newrgbcolor{mulaborange}{0.5 0.5 0.0}
+\newrgbcolor{notmulabcolor}{0.77 0.58 0.32}
+
+\let\@advisor\@empty
+\newcommand{\advisor}[1]{\gdef\@advisor{#1}}
+
+\let\@coadvisor\@empty
+\newcommand{\coadvisor}[1]{\gdef\@coadvisor{#1}}
+
+% Day of graduation
+\newcommand{\theday}[3]{%
+   \renewcommand\day{#1}%
+   \renewcommand\month{#2}%
+   \renewcommand\year{#3}%
+}
+
+% Definitions of the commands that apply the colors
+% Redefine these colors if you want to change the colors of the MuLAB
+% template. 
+\newcommand{\sbodycolor}{\mulabcolor}
+\newcommand{\sbodycolorBW}{\black}
+\newcommand{\stitlecolor}{\mulabcolor}
+\newcommand{\stitlecolorBW}{\black}
+\newcommand{\sfootcolor}{\mulabcolor}
+\newcommand{\sfootcolorBW}{\black}
+
+\newcommand{\firstslidebodycolor}{\mulabcolor}
+\newcommand{\firstslidebodycolorBW}{\black}
+\newcommand{\firstslidetitlecolor}{\mulabcolor}
+\newcommand{\firstslidetitlecolorBW}{\black}
+\newcommand{\firstslidesubtitlecolor}{\mulabcolor}
+\newcommand{\firstslidesubtitlecolorBW}{\black}
+
+% Dfinitions of the commands that colors the different parts of the
+% presentation. 
+\newcommand{\firstslidetitle}{\usefont{T1}{phv}{m}{sl}\fontsize{12pt}{13pt}%
+\selectfont\ifinColor\firstslidetitlecolor\else\firstslidetitlecolorBW\fi}
+\newcommand{\firstslidesubtitle}{\usefont{T1}{phv}{m}{sl}\fontsize{15pt}{15pt}%
+\selectfont\ifinColor\firstslidesubtitlecolor\else\firstslidesubtitlecolorBW\fi}
+\newcommand{\firstslidebody}{\usefont{T1}{phv}{m}{n}\fontsize{8pt}{11pt}%
+\selectfont\ifinColor\firstslidebodycolor\else\firstslidebodycolorBW\fi}
+
+%% \newcommand{\stitle}{\usefont{T1}{phv}{m}{it}\fontsize{14pt}{14pt}%
+%% \selectfont\ifinColor\stitlecolor\else\stitlecolorBW\fi}
+%% \newcommand{\sbodybig}{\usefont{T1}{phv}{c}{n}\fontsize{13pt}{13pt}%
+%% \selectfont\ifinColor\sbodycolor\else\sbodycolorBW\fi}
+%% \newcommand{\sbody}{\usefont{T1}{phv}{c}{n}\fontsize{11pt}{11pt}%
+%% \selectfont\ifinColor\sbodycolor\else\sbodycolorBW\fi}
+%% \newcommand{\sbodysmall}{\usefont{T1}{phv}{c}{n}\fontsize{9pt}{9pt}%
+%% \selectfont\ifinColor\sbodycolor\else\sbodycolorBW\fi}
+%% \newcommand{\sbodytiny}{\usefont{T1}{phv}{c}{n}\fontsize{7pt}{7pt}%
+%% \selectfont\ifinColor\sbodycolor\else\sbodycolorBW\fi}
+
+\newsavebox\logoPOLIsmall
+\sbox\logoPOLIsmall{\resizebox{1.2cm}{!}{\includegraphics{./figures/logopoli_blue_mini.eps}}}
+\newsavebox\logoMULAB
+\sbox\logoMULAB{\resizebox{1.5cm}{!}{\includegraphics{./figures/mulab.eps}}}
+
+% Some useful text environments.
+
+\DeclareFixedFont{\stitle}{T1}{phv}{b}{it}{13}
+\DeclareFixedFont{\sbodybig}{T1}{phv}{m}{n}{13}
+\DeclareFixedFont{\stitleline}{T1}{phv}{m}{sl}{5}
+\DeclareFixedFont{\sbody}{T1}{phv}{m}{n}{11}
+\DeclareFixedFont{\sbodysmall}{T1}{phv}{m}{n}{9}
+\DeclareFixedFont{\sbodytiny}{T1}{phv}{m}{n}{7}
+\DeclareFixedFont{\smail}{T1}{pcr}{b}{n}{7}
+\DeclareFixedFont{\ttfamily}{T1}{pcr}{m}{n}{11}
+
+\DeclareTextFontCommand{\stitlemulab}{\stitle}%\stitlecolor}
+\DeclareTextFontCommand{\sbodybigmulab}{\sbodybig}
+\DeclareTextFontCommand{\sbodymulab}{\sbody}
+\DeclareTextFontCommand{\sbodysmallmulab}{\sbodysmall}
+\DeclareTextFontCommand{\sbodytinymulab}{\sbodytiny}
+\DeclareTextFontCommand{\smailmulab}{\smail}
+
+% Redefinition of the Slide environment, to apply my style to the title.
+\renewenvironment{SlideNormal}[2][\@defaultTransition]{%
+  \stepcounter{trueSlideCounter}%
+  \PDFtransition{#1}%
+  \begin{slide@seminar}%
+    \def\@tempa{#2}%
+    \ifx\@tempa\@empty
+    \else
+       \@addBookmarkOnSlide{0}{#2}%
+       \slidetitle{\stitlemulab{#2}}%
+    \fi
+    \begin{posit@Box}%
+      \begin{minipage}{\slideWidth}%    
+        \begin{raggedright}%
+        \@DefMyItem
+        \ifinColor\@fontTextColor\else\@fontTextBW\fi
+	\sbody
+        }{%
+      \par\end{raggedright}% 
+    \end{minipage}
+  \end{posit@Box}\end{slide@seminar}}
+
+% Redefinition of the SlideOverlay environment, to apply my style to the title.
+% Slides in overlays
+\renewenvironment{SlideOverlay}[2][\@defaultTransition]{%
+  \ifDVItoPS
+      \begin{slide@seminar}%
+        \slidetitle{\stitlemulab{#2}}%
+        \begin{posit@Box}%
+          \begin{minipage}{\slideWidth}%
+            \begin{raggedright}%
+            \@DefMyItem
+            \ifinColor\@fontTextColor\else\@fontTextBW\fi
+  \else %% DVI -> PDF
+      \stepcounter{trueSlideCounter}%
+      \PDFtransition{#1}%
+      \begin{slide@seminar}%
+        \@prepareResetCounters
+        \def\@tempa{#2}%
+        \ifx\@tempa\@empty
+        \else
+          \@ifundefined{@okForBookmark}{%
+            \gdef\@okForBookmark{}%
+            \@addBookmarkOnSlide{\number\c@limitOverlays}{#2}%
+          }{\@addBookmarkOnSlide{0}{#2}}%
+          \slidetitle{\stitlemulab{#2}}%
+        \fi
+        \begin{posit@Box}%
+          \begin{minipage}{\slideWidth}%
+            \begin{raggedright}%
+            \@DefMyItem
+            \ifinColor\@fontTextColor\else\@fontTextBW\fi
+            {\overlay{1}}%
+  \fi    
+  \sbody
+  }{%
+  \ifDVItoPS
+        \par\end{raggedright}%
+      \end{minipage}\end{posit@Box}\end{slide@seminar}%
+  \else %% DVI -> PDF
+        \par\end{raggedright}%
+      \end{minipage}\end{posit@Box}\end{slide@seminar}%
+        \addtocounter{slide}{-1}%
+  \fi
+}
+
+
+% These definition are necessary even if they are not used
+% START
+\FontTitle{%
+  \usefont{T1}{phv}{m}{sl}\fontsize{13pt}{13pt}\selectfont\black}{%
+  \usefont{T1}{phv}{m}{sl}\fontsize{13pt}{13pt}\selectfont\black}
+
+\FontText{%
+  \usefont{T1}{phv}{m}{n}\fontsize{11pt}{11pt}\selectfont\black}{%
+  \usefont{T1}{phv}{m}{n}\fontsize{11pt}{11pt}\selectfont\black}
+
+%\ColorFoot{\mulabblue}
+% END
+
+% Positionning of the title of a slide.
+\newlength{\MulabTitleLength}
+\newcommand{\slidetitle}[1]{%
+  \rput[lt](0.0,5.0){\parbox[t]{10cm}
+    {
+      \settowidth{\MulabTitleLength}{#1}
+      \addtolength{\MulabTitleLength}{0.2cm}
+      {\black #1}\\
+    }
+  }
+  \ \\[-1.5cm]
+}
+
+% Redefining the bullet of the itemize
+\myitem{1}{\scriptsize\sbody\raisebox{2pt}{\ensuremath{\bullet}}}
+\myitem{2}{\scriptsize\sbody\raisebox{2pt}{\ensuremath{\circ}}}
+
+%% \myitem{1}{\includegraphics[width=.4cm]{red-bullet-on-white.ps}}
+%% \myitem{2}{\includegraphics[width=.3cm]{green-bullet-on-white.ps}}
+%% \myitem{3}{\includegraphics[width=.3cm]{yellow-bullet-on-white.ps}}
+
+% Positionning for a logo
+%\LogoPosition{-1.5,7.5}
+%\Logo{\resizebox{1.2cm}{!}{\includegraphics{./figures/logpoli.pdf}}}
+
+% Definition of this style for slides.
+\newcommand{\TPFrame}[1]
+{
+  % Main gradient
+  \ifisDraft
+  \else
+  \ifcolorBG\colorBGtrue
+  \psframe[linestyle=none, fillstyle=gradient,
+    gradbegin=white,gradend=mulabfaintblue,gradmidpoint=0.7](-1.8,-1.3)(11.8,7.3)
+  \psframe[linestyle=none, fillstyle=gradient,
+    gradbegin=white,gradend=white,gradmidpoint=0](-1.8,7.2)(11.8,8.8)
+  \else\fi
+  \fi
+
+  % Top line
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient, gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=1](-1.7,7.4)(11.7,7.3)
+  % Top second line
+  \psframe[linestyle=none, linewidth=2.0pt,%linecolor=mulaborange,
+    fillstyle=gradient,gradangle=90,%
+    gradbegin=white,gradend=mulabcolor,gradmidpoint=0](-1.7,7.32)(11.7,7.25) % upper
+  % Top left cross
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient,%gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=1](-1.6,7.5)(-1.5,6.15)
+
+  % Bottom line
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient, gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=0](-1.7,-0.8)(11.7,-0.7)
+  % Bottom second line
+  \psframe[linestyle=none, linewidth=2.0pt,%linecolor=mulaborange,
+    fillstyle=gradient,gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=0](-1.7,-0.72)(11.7,-0.65) % upper
+  % Bottom right cross
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient,%gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=0](11.5,-0.9)(11.6,0.45)
+
+  \rput[lt](-1.5,8.7){\parbox[t]{1.2cm}
+    {
+      \usebox{\logoPOLIsmall}
+%      \resizebox{1.2cm}{!}{\includegraphics{./logopoli_blue_mini.pdf}}
+    }
+  }
+  
+  \rput[lt](10.0,8.25){\parbox[t]{2cm}
+    {
+      \usebox{\logoMULAB}
+%      \resizebox{1.5cm}{!}{\includegraphics{./mulab.pdf}}
+    }
+  }
+       {\mulabcolor \small \PutLogo} % Mandatory 
+       {#1}
+}
+
+\newcommand{\MULABTitle}[1]
+{
+  % Main gradient
+  \ifisDraft
+  \else
+  \ifcolorBG\colorBGtrue
+  \psframe[linestyle=none, fillstyle=gradient,
+    gradbegin=white,gradend=mulabfaintblue,gradmidpoint=0,gradangle=90](-1.8,-1.3)(3.9,8.8)
+  \psframe[linestyle=none, fillstyle=gradient,
+    gradbegin=white,gradend=white,gradmidpoint=0,gradangle=90](3.8,-1.3)(6.2,8.8)
+  \psframe[linestyle=none, fillstyle=gradient,
+    gradbegin=mulabfaintblue,gradend=white,gradmidpoint=0,gradangle=90](6.1,-1.3)(11.8,8.8)
+  \else\fi
+  \fi
+  % Top line
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient, gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=1](-1.7,8.25)(11.7,8.15)
+  % Top second line
+  \psframe[linestyle=none, linewidth=2.0pt,%linecolor=mulaborange,
+    fillstyle=gradient,gradangle=90,%
+    gradbegin=white,gradend=mulabcolor,gradmidpoint=0](-1.7,8.17)(11.7,8.1) % upper
+  % Top left cross
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient,%gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=1](-1.6,8.35)(-1.5,7.0)
+
+  % Bottom line
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient, gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=0](-1.7,-0.8)(11.7,-0.7)
+  % Bottom second line
+  \psframe[linestyle=none, linewidth=2.0pt,%linecolor=mulaborange,
+    fillstyle=gradient,gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=0](-1.7,-0.72)(11.7,-0.65) % upper
+  % Bottom right cross
+  \psframe[linestyle=none,%fillstyle=solid,
+    linewidth=2pt,%fillcolor=mulabcolor,
+    fillstyle=gradient,%gradangle=90,%
+    gradbegin=mulabcolor,gradend=white,gradmidpoint=0](11.5,-0.9)(11.6,0.45)
+
+	  {\mulabcolor \small \PutLogo} % Mandatory 
+	  {#1}
+}
+
+% Definition of a new maketitle command that prints the first slide as
+% I want.
+\newcommand{\maketitlemulab}{%
+  %% Tests whether the 'french' style from B. Gaulle is loaded
+
+  \expandafter\ifx\csname frenchTeXmods\endcsname\relax%
+  \else%
+  %% Is it an old version affected by the bug.
+  \ifx\@soORI\undefined%
+  \PackageWarning{prosper}{This page is intentionnally left blank to
+    overcome an incompatibility bug in the seminar class with the old (<
+    1999/11/23) B. Gaulle's 'french' package.} 
+  \begin{center}
+    {\black\small
+      \textsf{prosper} class: page intentionnally left blank to overcome
+      an incompatibility bug between B. Gaulle 'french' package and the
+      seminar class.}% 
+  \end{center}
+  \clearpage \resetcounter{page}{-1}%
+  \fi\fi
+  
+  % Sets the right page style for the first slide.
+  \renewpagestyle{GenericPageStyle}{}{}
+  \NewSlideStyle[12.5cm]{t}{4.95,2.75}{MULABTitle}
+  
+  \begin{slide}{}%
+    \ptsize{10}%
+    \@titleSpacing\par
+    \normalfont
+    \begin{center}%
+      \begin{minipage}[c]{0.8\slideWidth}
+	\centering
+	\vspace{-2.cm}
+	\resizebox{2.0cm}{!}{\includegraphics{./figures/logopoli_blue_mini.eps}}\\
+	\vspace{0.3cm}
+%	       {\ifinColor\@fontTitleColor\else\@fontTitleBW\fi\@Title\par}%
+	       {\firstslidetitle\@Title\par}%
+	       \ifx\@Subtitle\@empty\else
+	       
+		   {\firstslidesubtitle\@Subtitle\par}
+		   \fi
+		   {\firstslidebody%
+		   \vskip 0.3cm		 
+%		   \vfill
+		   \today
+%		   \vfill
+		   \vskip 0.6cm		 
+		   \@Author
+		   
+		   \ifx\@email\@empty\vspace{0.5cm}\else
+		   \vskip-5pt
+		       {\smailmulab{\@email}}
+		       \fi
+		       \ifx\@institution\@empty%
+		       \else
+		       \vskip.8em
+		       \@institution
+		       \fi
+		       \ifx\@advisor\@empty\else
+		       \vskip 0.2cm
+		       \ifx\@coadvisor\@empty
+		       Relatore:\\
+		       \vspace{-0.15cm}
+		       \@advisor\\
+		       \else
+		       \hspace{0.1cm}Relatore:\hfill Correlatore:\hspace{0.1cm}\\
+		       \vspace{-0.15cm}
+		       \hspace{0.1cm}\@advisor\hfill\@coadvisor\hspace{0.1cm}\\
+		       \fi
+		       \fi
+		       \vspace{0.3cm}
+		       %% 		  \ifx\@coadvisor\@empty\else
+		       %% 		  \vskip 0.5cm
+		       %% 		  \@coadvisor
+		       %% 		  \fi
+		   }
+		       \vfill
+		       \resizebox{1.7cm}{!}{\includegraphics{./figures/mulab.eps}}
+      \end{minipage}
+    \end{center}
+  \end{slide}
+
+%% Add a PDF bookmark for the titlepage
+\pdfmark{pdfmark=/OUT,
+   Raw={/Page \thetrueSlideCounter
+   /View [ /XYZ null null null ]
+   /Title (Title page)}
+}
+
+
+% Set the page style for the rest of the presentation.
+%% \renewpagestyle{GenericPageStyle}{}{\ifnoFooter\else\hspace{-2.0em}
+%%   {\ifinColor\sfootcolor\else\sfootcolorBW\fi\tiny\@Author~~--~~%
+%%     \number\day/\number\month/\number\year\hfill\hfill\@cartouche~~--
+%%     \thepage\ifallPages/\realpageref{last@page}\fi}\hspace{2.2em}\fi}
+%% \renewpagestyle{GenericPageStyle}{}{\ifnoFooter\else\hspace{-2.0em}
+%%   {\ifinColor\sfootcolor\else\sfootcolorBW\fi\tiny\@Author~~--~~%
+%%     \number\day/\number\month/\number\year\hfill\hfill\@Title:~\@Subtitle~~--
+%%     \thepage\ifallPages/\realpageref{last@page}\fi}\hspace{2.2em}\fi}
+
+\renewpagestyle{GenericPageStyle}{}{\ifnoFooter\else\hspace{-2.0em}
+  {\ifinColor\sfootcolor\else\sfootcolorBW\fi\tiny\@Author\hfill{\stitleline\@Title}\hfill
+    \makebox[2em][r]{\thepage\ifallPages/\realpageref{last@page}\fi}}\hspace{2.2em}\fi}
+
+
+\NewSlideStyle[12.5cm]{t}{5.,2.75}{TPFrame}
+
+}
+
+\PDFCroppingBox{0 0 600 800}
+%%\RequirePackage{semhelv}
+\addtolength{\textwidth}{2cm}
+\endinput
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

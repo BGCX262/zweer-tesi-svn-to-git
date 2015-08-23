@@ -1,0 +1,277 @@
+\chapter{Reingegnerizzazione dell'applicazione}
+\label{c:reing}
+
+Si va ora a esaminare in dettaglio la reingegnerizzazione dell'intera piattaforma, studiando più da vicino le idee da cui si è partiti ma soprattutto l'organizzazione e la strutturazione del lavoro, in modo da rendere il sistema il più facilmente fruibile possibile, senza trascurarne l'espandibilità.
+
+\section{Le premesse}
+\label{c:reing:prem}
+
+Nella reingegnerizzazione del sistema si è voluto partire da zero e costruire quindi gli oggetti necessari per le funzionalità di raccomandazione vera e propria e per i vari test.
+
+La soluzione più semplice e immediata è stata ideare due oggetti separati in grado di interagire tra di loro:
+
+\begin{description}
+	\item[Recommendation] gestisce la fase di suggerimento attraverso la creazione del modello, la generazione della lista e infine il reshuffling e l'esportazione dei risultati. Deve poter utilizzare qualsiasi algoritmo in grado di generare una lista di raccomandazioni.
+	\item[Test] si occupa della fase di testing, richiamando funzioni che implementano i diversi metodi, in modo da eseguire un test completo in pochi passi, fornendo anche tutte le parametrizzazioni necessarie. Non deve occuparsi della fase di generazione della lista di suggerimenti, ma solamente della coordinazione delle diverse liste ottenute.
+\end{description}
+
+Il procedimento viene complicato dal fatto che gli algoritmi di generazione del modello e le metodologie di test sono molto diverse tra di loro, quindi devono essere implementati separatamente. Ma proprio questa diversità può anche risultare un punto di forza, in quanto si possono già creare le fondamenta per un'espansione futura dell'applicazione.
+
+Ogni oggetto deve essere inteso come un \corsivo{workflow}, ovvero come un flusso che si occupa di generare completamente la raccomandazione o il test. L'utente deve poter interagire solamente con un'istanza dell'oggetto, senza perder tempo nella gestione di istanze multiple che, oltre a consumare un'enorme quantità di memoria, rendono l'esperienza dell'utente poco pratica, visto che è proprio per sopperire alla mancanza di praticità che ci si è fermati per riorganizzare il tutto.
+
+\section{La struttura}
+\label{c:reing:strut}
+
+Nella piattaforma in esame sono fondamentalmente due le parti parametriche: l'algoritmo di raccomandazione, che si occupa sia della creazione del modello sia della generazione della lista di suggerimenti, e la metodologia di test. Per questo motivo si sono intesi i due oggetti (Recommendation e Test) come dei \corsivo{wrapper} che essenzialmente vanno a recuperare altre funzioni in specifiche zone del filesystem a seconda delle scelte fatte: ad esempio se si vuole effettuare un test ""Leave One Out'' con un algoritmo ""Asymmetric SVD'' è sufficiente recuperare le funzioni che gestiscono il ""Leave One Out'' e quelle che implementano l'algoritmo voluto e quindi fonderle per generare i risultati.
+
+La fase di recupero dell'implementazione cercata dev'essere molto semplice e intuitiva, proprio per questo si è deciso di adeguare la struttura delle directory che contengono i vari sorgenti (cfr. Figura ~\ref{f:reing:dir} ): 
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.7]{./img/Cartelle}
+	\end{center}
+	\caption{Struttura del filesystem}
+	\label{f:reing:dir}
+\end{figure}
+
+\begin{description}
+	\item[Algorithms] raccoglie, uno per cartella, i vari algoritmi di raccomandazione. All'interno di queste cartelle sono presenti due file Matlab: 
+	\begin{description}
+		\item[createModel] si occupa della creazione del modello, prendendo come input la matrice \urm (di dimensione $ m \times n $) e una struttura di parametri aggiuntivi che servono per specificare alcune opzioni dei vari algoritmi. Tra questi parametri deve esserci \corsivo{Path}\nota{Questo parametro viene inserito in automatico dall'oggetto Recommendation.} che specifica il percorso della root della struttura dati e può anche esserci il parametro \corsivo{Model}: se è settato la funzione ritorna subito il contenuto di questo parametro, senza effettuare ulteriori controlli. Quest'opzione è stata aggiunta in quanto molto spesso la creazione del modello è computazionalmente talmente onerosa da rendere impossibili certi test, quindi questi vengono eseguiti utilizzando più volte il medesimo modello e abbreviando quindi i tempi di calcolo. L'output di questa funzione sarà il modello della raccomandazione, che verrà poi gestito dall'oggetto Recommendation stesso.
+\begin{lstlisting}[style=Matlab, caption={Funzione createModel}, label=l:reing:strut:cm]
+Model = createModel(URM, Parameters)
+\end{lstlisting}
+		\item[onLineRecom] si occupa di generare la lista di suggerimenti. Prende come input il modello creato in precedenza, il profilo utente (un vettore riga di lunghezza $ n $) e infine, come già visto per la createModel, una struttura di parametri aggiuntivi per modificare alcuni comportamenti dell'algoritmo. Come nel caso della createModel, anche qui deve esserci il parametro \corsivo{Path}. L'output di questa funzione è un vettore colonna di lunghezza $ m $ con i rating dei vari item.
+\begin{lstlisting}[style=Matlab, caption={Funzione onLineRecom}, label=l:reing:strut:olr]
+List = onLineRecom(UserProfile, Model, Parameters)
+\end{lstlisting}
+	\end{description}
+	Ogni algoritmo ha le sue particolarità e per questo il sistema non interviene mai sul modello della raccomandazione, ma si limita a passare il dato dalla funzione di creazione a quella di generazione della lista. Solamente i parametri di ingresso e la lista finale sono ""standardizzati'', tutto il resto è specifico da algoritmo ad algoritmo.
+	\item[Methods] contiene le diverse metodologie di test che risultano divise in due funzioni:
+	\begin{description}
+		\item[initializeMethod] è la funzione che viene lanciata quando si vuol testare un algoritmo con un certo metodo. Contiene tutte le dovute inizializzazioni come preparare la matrice di Train e quella di Test. Al suo interno verrà richiamato il doMethod. Avrà come parametri di input la matice \urm, la matrice di Probe su cui fare il Train del test, l'algoritmo di raccomandazione che si vuole studiare e infine i vari parametri che si vogliono utilizzare, quelli del metodo in sè, quelli della createModel e infine quelli dell'onLineRecom. L'output sarà un oggetto con al suo interno i risultati del test secondo una determinata metrica (principalmente RMSE).
+\begin{lstlisting}[style=Matlab, caption={Funzione initializeMethod}, label=l:reing:strut:im]
+Result = initializeMethod(URM, URMProbe, Algorithm, MethodParameters, ModelParameters, OnLineParameters)
+\end{lstlisting}
+		\item[doMethod] contiene tutte le operazioni tipiche della metodologia di test. Per funzionare a dovere ha bisogno che gli siano passati tutta una serie di parametri che la inizializeMethod ha il compito di preparare. In alcuni metodi è possibile richiamare una funzione doMethod di un altro metodo di test. Gli input di questa funzione sono l'algoritmo da testare, la matrice \urm, la matrice di Train, il set dei test positivi e di quelli negativi e infine i parametri della createModel e dell'onLineRecom. L'output è un array con i test positivi e quelli negativi.
+\begin{lstlisting}[style=Matlab, caption={Funzione doMethod}, label=l:reing:strut:dm]
+[PositiveTests, NegativeTests] = doMethod(Algorithm, URM, URMTrain, PositiveTestSet, NegativeTestSet, ModelParameters, OnLineParameters)
+\end{lstlisting}
+	\end{description}
+	Questa suddivisione è stata introdotta in quanto è possibile che un metodo utilizzi parte di un altro metodo per svolgere alcune funzioni.
+	\item[Utility] contiene tutte quelle funzioni che servono a far funzionare i vari algoritmi e le funzioni di test. Al suo interno si possono trovare funzioni per la normalizzazione delle matrici, per il reshuffling e infine la libreria C che si occupa di velocizzare le operazioni più onerose. Si è scelto di inserire tutti i file in questa cartella per fare ordine, cosa che prima dell'intervento in oggetto a questo lavoro di tesi non era minimamente pensabile.
+\end{description}
+
+\section{Gli oggetti}
+\label{c:reing:ogg}
+
+Si passa ora all'esame dettagliato dei due oggetti principali del lavoro di reingegnerizzazione, \corsivo{Recommendation} e \corsivo{Test} che rappresentano anche i soli punti di contatto tra il sistema e l'utente: infatti tutte le interazioni avverranno attraverso questi wrapper mediante opportune API. Verranno anche presentati i metodi principali di questi oggetti, in modo da fornire un esempio di utilizzo.
+
+\subsection{Recommendation}
+\label{c:reing:ogg:rec}
+
+Quest'oggetto è stato ideato partendo da una semplice idea: ogni istanza deve rappresentare un'esperienza di raccomandazione, quindi l'utente deve creare solamente un oggetto e continuare ad usarlo memorizzando al suo interno dati finché non ha finito la raccomandazione completa. In questo modo l'utente non si trova ad avere memorizzate troppe istanze dell'oggetto stesso, col risultato di risparmiare memoria e soprattutto rendere ordinato il workspace.
+
+L'utente deve inoltre poter scegliere tranquillamente quale algoritmo utilizzare, e quindi non doversene più interessare: è l'oggetto che andrà a costruire il modello e creerà la lista di raccomandazioni secondo quel determinato algoritmo. \`E anche possibile modificare l'algoritmo scelto, ma poi sarà necessario ricreare il modello in quanto potrebbero nascere delle incompatibilità, basti pensare a due algoritmi che utilizzano modelli differenti.
+
+Altra particolarità di quest'oggetto è non salvare la matrice \urm: essa viene tenuta in memoria nell'ambiente base di Matlab, in modo da non pesare all'interno dell'oggetto. In questo modo l'accesso risulta essere più rapido. Si è voluto cercare di portare su Matlab il concetto dei puntatori del linguaggio C, ma non esistendo un costrutto del genere si è iniziato a lavorare differenziando i workspace. A tal scopo all'interno dell'oggetto viene salvato solamente il nome della matrice, che risiede fisicamente nell'ambiente di base.
+
+Infine si è cercato di memorizzare tutti i risultati delle raccomandazioni eseguite: in questo modo si può accedere rapidamente nel caso di Reshuffling e di test in cui si vogliono avere a disposizione le ultime liste create. Inoltre quest'operazione non è computazionalmente troppo onerosa in quanto si tratta semplicemente di vettori colonna, seppur di grandi dimensioni.
+
+Si prosegue quindi con l'analisi dei diversi metodi e attributi di quest'oggetto.
+
+\subsubsection{Attributi Privati}
+\label{c:reing:ogg:rec:pri}
+
+Sono stati protetti in scrittura poiché non risulta essere d'interesse modificarne il valore. Sarà invece importante potervi accedere in lettura (soprattutto a uno dei tre).
+
+\begin{description}
+	\item[Model] è il modello utilizzato. Viene creato da un apposito metodo. Teoricamente potrebbe essere protetto anche in lettura in quanto non è di enorme interesse conoscerne la forma, ma visto che per alcune fasi di debug può risultare interessante leggerne il contenuto, si preferisce lasciarlo pubblico in lettura.
+	\item[Path] è una stringa contenente il percorso assoluto della root della nostra struttura di cartelle. Serve alle varie funzioni per includere le diverse cartelle da cui prendere file utili (come la cartella delle Utility). Viene impostato dal costruttore dell'oggetto e in seguito non viene più modificato. Viene aggiunto a tutti i parametri e quindi passato in tutte le funzioni di creazione del modello e creazione della lista.
+	\item[Result] è un array contenente un oggetto per ogni raccomandazione. Questo oggetto è organizzato nel seguente modo:
+	\begin{description}
+		\item[Result.List] è la lista vera e propria, così come esce dalla funzione di raccomandazione. Contiene tutti i voti dati ai vari elementi.
+		\item[Result.Ranking] è un array contenente le chiavi degli elementi di Result.List ordinati in modo decrescente, quindi il primo valore è la chiave dell'elemento col voto maggiore.
+		\item[Result.UserProfile] è il profilo utente utilizzato per generare la raccomandazione. Nel caso in cui il risultato provenga dalla funzione di antireshuffling e non da una raccomandazione vera e propria, è un array contenente i due profili utenti associati alle liste su cui è stato applicato l'antireshuffling.
+	\end{description}
+\end{description}
+
+\subsubsection{Attributi Pubblici}
+\label{c:reing:ogg:rec:pub}
+
+I seguenti attributi, possono essere soggetti a modifiche da parte dell'utente. Proprio per questo sono pubblici, benché la loro modifica sia soggetta a vincoli, anche molto stringenti per quanto riguarda uno di essi.
+
+\begin{description}
+	\item[Algorithm] è l'algoritmo che si utilizza per generare la raccomandazione. \`E una stringa e deve corrispondere alla cartella in cui sono contenuti i file con le funzioni utilizzate. Non è necessario memorizzare tutti i nomi, poiché in caso d'errore il sistema è in grado di stampare schermo il nome di tutti gli algoritmi disponibili. Questa proprietà può essere modificata solamente prima di creare il modello della funzione: in caso contrario verrà stampato un messaggio d'errore e l'algoritmo rimarrà il medesimo.
+	\item[URM] è una stringa che corrisponde al nome della variabile, nell'ambiente \corsivo{base}, che costituisce la matrice \urm. Come per l'algoritmo, anche questa stringa non può essere modificata dopo la creazione del modello. Si occupa in automatico di caricare le variabili indicate quando la stringa passata corrisponde a un file nel workspace.
+\end{description}
+
+\subsubsection{Metodi}
+\label{c:reing:ogg:rec:met}
+
+In questa fase di esamineranno i metodi che permettono all'utente di interagire con l'oggetto per creare il modello, la raccomandazione e per altre funzionalità. Tutti i metodi che verranno presentati sono pubblici in quanto non c'è alcuna necessità di creare metodi privati poiché, come ripetuto più volte in questa trattazione, l'oggetto non è nient'altro che un wrapper. Per completezza è opportuno informare il lettore che in seguito i parametri opzionali per i metodi saranno posti tra tramite parentesi quadre.
+
+\begin{description}
+	\item[Recommendation] è il costruttore dell'oggetto. Prende come parametri il nome della matrice \urm da utilizzare e il nome dell'algoritmo. L'assegnazione del nome della variabile contenente la matrice e dell'algoritmo sono soggetti a limitazioni nel caso in cui non esista o la variabile o il file contenente la matrice \urm, oppure non esista la cartella indicata come algoritmo da utilizzare. Nel caso queste assegnazioni non vadano a buon fine, l'oggetto viene comunque creato, ma con i campi summenzionati vuoti. Sarà poi compito dell'utente andare a riempirli prima di creare il modello.
+\begin{lstlisting}[style=Matlab, caption={Funzione costruttrice dell'oggetto Recommendation}, label=l:reing:met:rec]
+R = Recommendation(URM, Algorithm)
+\end{lstlisting}
+	\item[createModel] serve per creare il modello della funzione. Come è facilmente intuibile, controlla innanzitutto che siano settati l'algoritmo da utilizzare e la matrice URM. Come input prende una struttura di parametri che poi saranno passati alla funzione di creazione vera e propria. Dal momento che molte funzioni di creazione del modello necessitano di altre funzioni ""ausiliarie'', alla struttura di parametri viene aggiunto \corsivo{Path}. E, una volta creato, il modello viene memorizzato nell'attributo privato dell'oggetto.
+\begin{lstlisting}[style=Matlab, caption={Metodo per la costruzione del modello}, label=l:reing:met:cm]
+createModel([Parameters])
+\end{lstlisting}
+	\item[onLineRecom] si occupa della creazione e della memorizzazione della lista di raccomandazioni. Ha due parametri in ingresso: il vettore col profilo utente e la solita struttura di parametri da usare nella funzione di generazione dei suggerimenti. Come visto per la createModel, anche qui viene aggiunto il parametro indicante il percorso sul filesystem. L'output del metodo è la lista contenente le votazioni di ogni singolo elemento. Nell'oggetto viene inserita una voce all'attributo \corsivo{Result}, contenente tutte le informazioni viste al punto \ref{c:reing:ogg:rec:pri}.
+\begin{lstlisting}[style=Matlab, caption={Metodo per la creazione della lista di raccomandazioni}, label=l:reing:met:olr]
+List = onLineRecom(UserProfile[, Parameters])
+\end{lstlisting}
+	\item[antiReshuffling] si prende in carico l'esecuzione dell'antireshuffling su due risultati ottenuti con la onLineRecom. I parametri di ingresso sono tre: il primo indice dell'array Result contenuto nell'oggetto (alternativamente può essere specificato un profilo utente su cui eseguire la raccomandazione), il secondo indice (anche qui si può specificare un profilo utente) e infine una struttura di parametri. Si può scegliere di non specificare tutti gli input operando quindi nei seguenti modi:
+	\begin{itemize}
+		\item se non vengono passati i parametri si esegue la funzione tra gli ultimi due risultati;
+		\item se si specifica un solo indice (o vettore utente) viene eseguito l'antireshuffling tra questo e l'ultimo;
+		\item se si specifica solo una struttura di parametri si considerano gli ultimi due risultati e si passano i parametri specificati;
+		\item se vengono passati due indici (o vettori utente) si esegue l'antireshuffling tra quei due valori;
+		\item se vengono passati un indice e una struttura di parametri si produce come risultato la combinazione del risultato indicato e dell'ultimo, passando alla funzione i parametri.
+	\end{itemize}
+	L'output del metodo è la nuova lista di raccomandazioni, inoltre viene memorizzata nell'attributo Result la lista più altre informazioni, come visto nel già citato punto \ref{c:reing:ogg:rec:pri}.
+\begin{lstlisting}[style=Matlab, caption={Metodo per la funzione di antireshuffling}, label=l:reing:met:ar]
+List = antiReshuffling([Index1[, Index2[, Parameters]]])
+\end{lstlisting}
+	\item[export] si occupa, dell'esportazione dei risultati su un file di testo. Viene utilizzata la convenzione \csv\nota{Coma Separated Values, ovvero valori separati da una virgola o più in generale da un limitatore.} utilizzando un \# per separare i diversi valori e una | per i campi. La funzione prende come input il file su cui memorizzare e gli indici (che possono essere passati sia come valori, sia come array) dei risultati da esportare. Se non viene specificato l'indice del risultato da esportare, la funzione agirà sull'ultimo creato.
+\begin{lstlisting}[style=Matlab, caption={Metodo per l'esportazione dei risultati}, label=l:reing:met:ex]
+export(File[, Index])
+\end{lstlisting}
+\end{description}
+
+\subsection{Test}
+\label{c:reing:ogg:test}
+
+Quest'oggetto si occupa di testare un algoritmo secondo diverse metodologie. Il test di per sé viene pensato come qualcosa di automatico, in cui l'utente può cambiare i parametri in modo da effettuare una procedura adatta alle proprie esigenze.
+
+Come già visto per le raccomandazioni, anche il test è un oggetto di cui basta anche solo un'istanza per poter operare: i risultati vengono salvati, secondo diverse metriche, all'interno dell'oggetto stesso, così che si possano eseguire diverse prove con algoritmi differenti o addirittura con metodologie differenti. 
+
+Ovviamente il suo funzionamento è legato a quello dell'oggetto Recommendation poiché tutte le raccomandazioni sono affidate a quest'ultimo. Attraverso un passaggio di parametri adeguato, l'utente può intervenire in qualsiasi punto della raccomandazione, in modo da avere il pieno controllo e gestire, ad esempio, spazi latenti differenti per più prove con lo stesso metodo.
+
+\subsubsection{Attributi Privati}
+\label{c:reing:ogg:test:pri}
+
+Analogamente all'oggetto Recommendation, anche qui gli attributi privati sono riservati a informazioni che l'utente non deve modificare, ma che ugualmente possono essere letti.
+
+\begin{description}
+	\item[Path] è il percorso assoluto dell'M-file contenente l'oggetto in questione. Serve, come visto in precedenza, per includere le funzioni ausiliarie e i metodi di testing. Viene settato in automatico in fase di inizializzazione dell'oggetto.
+	\item[Result] è il contenitore dove vengono memorizzati tutti i risultati dei vari test fatti tramite l'oggetto istanziato. \`E un array di struct dove ogni voce rappresenta una metrica (quella più usata è l'RMSE, ma ne esistono altre).
+\end{description}
+
+\subsubsection{Attributi Pubblici}
+\label{c:reing:ogg:test:pub}
+
+Queste proprietà dell'oggetto, diversamente dalle precedenti, possono essere modificate. Gli attributi, questi devono sottostare a vincoli per la buona riuscita dell'algoritmo di test, come verrà più esplicitamente esaminato nelle singole spiegazioni.
+
+\begin{description}
+	\item[Algorithm] è l'algoritmo utilizzato per generare le raccomandazioni e i modelli. Deve essere uguale al nome della cartella in cui sono memorizzate le sue funzioni. Nel caso in cui non ci si ricordi del nome esatto, il sistema stamperà a video l'elenco degli algoritmi disponibili.
+	\item[Method] rappresenta la metodologia di test scelta. Similmente all'algoritmo, anche questa stringa deve coincidere con una determinata cartella. Anche per questo attributo non è necessario ricordare tutti i nomi perché l'oggetto stamperà a video tutte le metodologie disponibili.
+	\item[URM] è il nome della variabile da usare per la matrice URM. Se il nome specificato è quello di un file \corsivo{.mat} o \corsivo{.mm}, il sistema andrà in automatico a leggerlo dal filesystem e lo importerà nel workspace.
+	\item[URMProbe] è la matrice usata per il testing vero e proprio. Viene memorizzata solamente la stringa corrispondente e quindi caricata ogni volta dalla memoria.
+\end{description}
+
+\subsubsection{Metodi}
+\label{c:reing:ogg:test:met}
+
+A differenza dell'oggetto Recommendation, Test non ha molti metodi al suo interno: è facilmente intuibile che per generare una raccomandazione necessitano diversi passi, mentre è sufficiente far girare un test per avere dei risultati. Avremo quindi solamente i metodi indispensabili. Questa scelta è anche suggerita dal fatto che s'è voluto semplificare al massimo l'oggetto, lasciando tutta la complessità alle funzioni che gestiscono le metodologie di testing e soprattutto alla scelta dei parametri. Sarà poi l'utente a utilizzare più volte lo stesso oggetto per avere test particolari.
+
+\begin{description}
+	\item[Test] è il costruttore dell'oggetto. Prende come parametri di input le due matrici da utilizzare, \urm e Probe, l'algoritmo per la raccomandazione e il metodo di test. Nel caso in cui una di queste assegnazioni non sia corretta (ad esempio si sceglie un algoritmo inesistente) l'oggetto viene creato ugualmente, ma manca dell'attributo settato. Successivamente quando si cercherà di utilizzare un altro metodo verrà restituito un messaggio d'errore.
+\begin{lstlisting}[style=Matlab, caption={Funzione costruttrice dell'oggetto Test}, label=l:reing:met:tst]
+T = Test(URM, URMProbe, Algorithm, Method)
+\end{lstlisting}
+	\item[fire] si occupa di far partire il metodo di test, quindi di lanciare la funzione initializeMethod contenuta nella cartella \corsivo{Method} scelta. Prende in ingresso i tre diversi tipi di parametri: quelli del metodo di test, quelli della funzione che crea il modello e quelli della funzione che genera la raccomandazione vera e propria. Questi tre input sono tutti facoltativi in quanto si può optare per l'utilizzo dei parametri di default. L'output della funzione sarà il risultato ottenuto, che verrà anche salvato come ultima voce dell'array Result, attributo dell'oggetto istanziato.
+\begin{lstlisting}[style=Matlab, caption={Metodo per lanciare il test}, label=l:reing:met:fr]
+Result = fire([MethodParameters[, ModelParameters[, OnLineParameters]]])
+\end{lstlisting}
+\end{description}
+
+\section{Use Cases}
+\label{c:reing:uc}
+
+La semplicità d'uso è stato il filo conduttore di tutta l'implementazione della piattaforma in esame. Proprio per questo motivo vengono ora presentati i casi d'uso che rispecchiano una fruizione tipica dell'applicazione.
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=1]{./img/UseCases}
+	\end{center}
+	\caption{Gli use cases dell'applicazione}
+	\label{f:reing:uc}
+\end{figure}
+
+\subsection{Generazione della lista di raccomandazione}
+\label{c:reing:uc:rec}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.9]{./img/UseCase_RecList}
+	\end{center}
+	\caption{Use Case: generazione della lista di raccomandazione}
+	\label{f:reing:uc:rec}
+\end{figure}
+
+Per generare un suggerimento bisogna interagire con l'oggetto Recommendation. I passaggi da svolgere sono pochi:
+
+\begin{itemize}
+	\item si istanzia l'oggetto passando come parametri del costruttore la matrice \urm e l'algoritmo scelto. Il sistema alloca lo spazio in memoria per l'oggetto e quindi controlla che i due input siano corretti; devono essere validi sia il nome della variabile che rappresenta la matrice, sia l'algoritmo di raccomandazione. Qualora non si verifichino queste condizioni, viene restituito un messaggio d'errore: l'oggetto è già stato istanziato e quindi bisogna procedere a settare gli attributi direttamente, senza ripassare dal costruttore. Quando i valori inseriti risultano essere idonei il sistema procede alla memorizzazione degli stessi.
+	\item l'utente richiama il metodo che crea il modello. Il sistema va a cercare sul filesystem la funzione corrispondente e quindi la esegue, andando poi a memorizzare il risultato nell'attributo Model dell'oggetto.
+	\item attraverso un profilo utente viene richiesta la generazione della lista di raccomandazione che successivamente è salvata nell'array Result in modo da poter essere riutilizzata in seguito.
+\end{itemize}
+
+\subsection{Esportazione della raccomandazione}
+\label{c:reing:uc:exp}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.9]{./img/UseCase_Export}
+	\end{center}
+	\caption{Use Case: esportazione della raccomandazione}
+	\label{f:reing:uc:exp}
+\end{figure}
+
+Ogni lista di suggerimenti può essere esportata in formato testale. Per far ciò è sufficiente:
+
+\begin{itemize}
+	\item creare la raccomandazione con i passaggi visti in precedenza.
+	\item richiamare il metodo di export indicando su quale file debba essere memorizzata la stringa rappresentante la lista. Si può anche specificare quale dei tanti risultati esportare mediante l'uso di un array di indici.
+\end{itemize}
+
+\subsection{Antireshuffling}
+\label{c:reing:uc:anti}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.9]{./img/UseCase_Antireshuffling}
+	\end{center}
+	\caption{Use Case: antireshuffling}
+	\label{f:reing:uc:anti}
+\end{figure}
+
+Si esamina ora la creazione di una lista di raccomandazioni tramite la tecnica di antireshuffling. Per far ciò bisogna prima generare due diverse liste di suggerimenti:
+
+\begin{itemize}
+	\item si costruisce la prima lista inserendo un profilo utente di un momento prefissato. La lista conseguente viene memorizzata nell'array Result.
+	\item si inserisce un secondo profilo utente che genera una nuova lista di raccomandazioni. Anche questa viene automaticamente salvata nell'attributo Result dell'oggetto.
+	\item si richiama quindi la funzione di antireshuffling che, prese le ultime due liste generate, calcola la risultante. Questa viene sia restituita come output della funzione, sia memorizzata nell'array Result per essere eventualmente utilizzata in seguito.
+\end{itemize}
+
+\subsection{Esecuzione di un test}
+\label{c:reing:uc:test}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.9]{./img/UseCase_Test}
+	\end{center}
+	\caption{Use Case: esecuzione di un test}
+	\label{f:reing:uc:test}
+\end{figure}
+
+In questo caso pratico si usa l'oggetto Test. Anche in questo caso l'interazione col sistema è molto semplice e intuitiva:
+
+\begin{itemize}
+	\item prima di tutto si inizializza l'oggetto Test passando come parametri le due matrici \urm e Probe, il nome dell'algoritmo di raccomandazione che si vuole utilizzare e la metodologia scelta. Il sistema quindi allocherà lo spazio in memoria e verificherà la correttezza dei dati: le matrici devono esistere nell'ambiente di base (o alternativamente come file nel filesystem), l'algoritmo e la metodologia devono essere validi. Nel caso in cui almeno uno di questi parametri non sia corretto viene restituito un messaggio d'errore e l'utente deve provvedere alla correzione manuale dell'attributo. Quando non ci sono più problemi, ogni attributo viene memorizzato.
+	\item si richiama il metodo che fa partire il test, passando come input i vari parametri da utilizzare per la metodologia di test, per la creazione del modello e per la generazione della lista di suggerimenti. Il sistema processerà tutto quanto e, dopo aver svolto l'intero test, creerà un oggetto contenente i risultati memorizzandolo nell'array Result.
+\end{itemize}

@@ -1,0 +1,1 @@
+@start "" "C:\Program Files (x86)\Adobe\Reader 9.0\Reader\AcroRd32.exe" "%~f1"

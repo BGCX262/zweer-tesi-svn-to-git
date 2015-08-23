@@ -1,0 +1,601 @@
+\chapter{Il Force Directed Scheduling proposto}
+\label{c:my}
+\thispagestyle{empty}
+
+\vspace{0.5cm}
+
+In questo capitolo verranno illustrate le modifiche apportate all'algoritmo originale del \emph{Force Directed scheduling}. Nella prima sezione verranno mostrate le variazioni applicate ai passi dell'algoritmo originario basate sulle osservazioni fatte nel capitolo precedente per ottenere migliori risultati in termini di numero di risorse allocate o di tempi di esecuzione minori. Nella seconda sezione verrà mostrata la versione proposta dell'algoritmo che consente di considerare contemporaneamente vincoli temporali e vincoli tecnologici a differenza delle estensioni proposte dagli autori che prevedevano la presenza di vincoli di un unico tipo.
+
+\section{Proposte di modifiche all'algoritmo originale}
+\label{c:my:var}
+Le variazioni che verranno di seguito descritte sono state ipotizzate a seguito dell'analisi e delle critiche fatte alla versione originale dell'algoritmo di cui sono stati evidenziati (in particolare in \ref{c:ori:core:force}, \ref{c:ori:core:body} e \ref{c:ori:longcore:look})) i limiti insiti nel gestire particolari soluzioni.
+
+\subsection{Priorità delle operazioni}
+\label{c:my:var:priority}
+Il \emph{Force Directed scheduling} è un algoritmo che presenta una complessità computazionale relativamente elevata rispetto ad algoritmi più semplici quali l'ASAP, l'ALAP o il List Based. Questa maggiore complessità è da ascriversi principalmente alla visione più globale che questo algoritmo ha rispetto a quelli citati. Esso infatti per decidere un assegnamento deve tenere conto di tutti gli effetti secondari che tale assegnamento avrebbe nei diversi passi di controllo. Inoltre non segue un ordine prefissato nel scegliere quale operazione schedulare e quindi necessita che ad ogni iterazione le informazioni relative a tutte le operazioni vengano ricalcolate. E' evidente se si confronta questo sistema con quello per esempio del List Based in cui vengono considerate ad ogni passo di controllo solo le operazioni considerate pronte quanto questo comporti un dilatarsi dei tempi di calcolo.
+
+Gli autori stessi dell'algoritmo (come mostrato in \ref{c:ori:core:compl} - considerazioni sulla complessità) hanno cercato soluzioni che ne riducessero la complessità limitando le finestre temporali delle operazioni. La soluzione qui presentata prevede invece una riduzione del numero di candidate ad essere schedulate in ogni iterazione, in modo tale che l'algoritmo dovendo scegliere solo da un sottoinsieme di operazioni, debba calcolare le forze solo relativamente a questo sottoinsieme. Terminato di assegnare le operazioni del sottogruppo prescelto si selezionerà un nuovo sottogruppo e così via sino ad esaurire tutte i sottogruppi e quindi tutte le operazioni. Questa limitazione applicata alla versione completa dell'algoritmo può essere anche combinata con quella proposta in \ref{c:ori:core:compl} per ottenere un'ulteriore riduzione della complessità a spesa della bontà dei risultati. Il problema di ridurre il numero delle candidate raggruppandole in sottogruppi può essere modellizzato assegnando ad ogni operazione una priorità: ad ogni iterazione verranno calcolate solo le forze delle operazioni con priorità maggiore che saranno le possibili candidate ad un assegnamento. Rimane da determinare come scegliere le priorità cioè quali operazioni raggruppare in modo tale che vengano schedulate in successione. Per far questo si può considerare che alla base del Force Directed scheduling c'è il calcolo degli effetti che ha un assegnamento di un'operazione su tutte le altre operazioni in tutti i passi di controllo.
+
+Tuttavia ci si può chiedere se effettivamente un assegnamento abbia un'influenza significativa così estesa. Nella realtà si può facilmente evincere che se due operazioni sono molto distanti nel SDG l'assegnamento di una non influenzerà i possibili assegnamenti dell'altra o lo farà in misura minore. Una prima indicazione su come raggruppare l'operazioni è quindi quella data dalla loro vicinanza all'interno del SDG: operazioni vicine avranno finestre temporali sovrapposte e quindi concorreranno per l'utilizzo delle unità funzionali negli stessi passi di controllo. Questo purchè le operazioni non siano in mutua esclusione reciproca, cioè non appartengano per esempio al ramo then e al ramo else di un costrutto condizionale. Infatti nel caso le operazioni siano in mutua esclusione, esse non saranno in concorrenza per l'assegnamento di unità funzionali quindi si può pensare di schedularle in momenti diversi e perciò assegnarli a gruppi diversi.
+
+Infine è possibile fare una considerazione sulle operazioni di salto condizionale: esse costituiscono per così dire dei paletti che fissano lo scheduling di tutte le altre operazioni, sia perchè tipicamente hanno bassa mobilità facendo parte dei percorsi critici o dei rami ad essi più vicini, sia perchè molte operazioni hanno una dipendenza di controllo da esse.
+
+Sulla base di questa serie di considerazioni si è scelto di utilizzare come suddivisione delle operazioni quella fornita dai blocchi basici che ovviamente rispetta sia il fatto di raggruppare operazioni vicine nei SDG, sia il fatto di raggruppare operazioni non in mutua esclusione reciproca. Questa suddivisione ha tuttavia la limitazione di essere di fatto nulla nel caso di assenza di costrutti condizionali. In questo caso l'algoritmo non si discosta dalla versione originale. In \ref{c:my:vincoli:priority} (priorità delle operazioni in presenza di vincoli) verrà mostrato un possibile ordinamento parziale dei blocchi basici e quindi dei sottogruppi, ma tale ordinamento ha il solo scopo di diminuire i tempi di esecuzione in presenza di vincoli tecnologici: allo stato attuale non si ha indicazione se tale ordinamento offra risultati migliori, peggiori o complessivamente non confrontabili di un ordinamento completamente casuale. Individuare il migliore ordinamento dei blocchi basici è infatti a tutt'oggi ancora un problema insoluto. In mancanza di certezze viene ora utilizzato l'ordinamento parziale mostrato in \ref{c:my:vincoli:priority} in quanto è plausibile ritenere che questo ordinamento provocando un minore numero di violazioni di vincoli in quel caso per le ragioni ivi riportate, produca nel caso privo di vincoli risultati tendenzialmente migliori; come verrà illustrato l'ordinamento è parziale. Per renderlo totale si utilizzerà come seconda chiave della funzione di ordinamento (la prima è appunto la posizione nell'ordinamento parziale) una funzione che ordini in modo fissato ma casuale i blocchi basici.
+
+\subsection{Interpretazione sulla formula della forza}
+\begin{figure}
+\begin{center}
+
+\subfigure[SFG di esempio]{
+\label{f:ex2:a}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram5.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram5.eps}
+}
+}
+}
+\subfigure[Distribuzione di probabilità e somma di probabilità]{
+\label{f:ex2:b}
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram6.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram6.eps}
+}
+}
+\end{center}
+\begin{center}
+\subfigure[Tabella delle forze delle operazioni da schedulare \newline SF = self forces \newline OF = predecessors' and successors' forces \newline TF = total forces ]{
+\label{f:ex2:tab}
+\begin{tabular}{|l|r||r|r|r|}
+\hline 
+Op & CS & SF & OF & TF \\
+\hline
+\hline
++5 & 1 & 0.0 & 0.0 & 0.0 \\
+\hline
++5 & 2 & 0.0 & 0.0 & 0.0 \\
+\hline
++6 & 1 & 0.0 & 0.0 & 0.0 \\
+\hline
++6 & 2 & 0.0 & 0.0 & 0.0 \\
+\hline	
+\end{tabular}
+}
+\end{center}
+\begin{center}
+\subfigure[Esempio di possibile scheduling prodotto dal Force Directed - caso pessimo]{
+\label{f:ex2:ca}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram7.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram7.eps}
+}
+}
+}
+\subfigure[Esempio di possibile scheduling prodotto dal Force Directed - caso ottimo]{
+\label{f:ex2:cb}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram8.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram8.eps}
+}
+}
+}
+\end{center}
+\hcaption{Esempio di indecisione nella scelta di un assegnamento in caso di costrutti condizionali}\label{f:ex2}
+\label{c:my:var:force}
+\end{figure}
+Consideriamo l'esempio riportato in figura \ref{f:ex2}: in \ref{f:ex2:a} è riportato un SDG di esempio con un'operazione di tipo salto condizionale; in \ref{f:ex2:b} sono riportate le distribuzioni di probabilità (l'etichette T ed F indicando se le operazioni fanno parte del ramo \emph{then} o del ramo \emph{else} del costrutto condizionale) e le somme di probabilità. Applicando l'algoritmo otteniamo una forza nulla per i quattro possibili assegnamenti: quale di questi si deve scegliere? Si potrebbe pensare che la scelta essendo le forze tutte uguali sia indifferente. Provando a compiere due scelte diverse, quindi a calcolare le forze per l'operazione rimanente e a schedularla si ottengono i risultati mostrati in \ref{f:ex2:ca} e \ref{f:ex2:cb}. Se valutiamo i due scheduling, trascurando le unità funzionali necessarie per sottrazione e costrutto condizionale che sono in numero uguale in entrambi i casi, si può notare come nel primo caso siano necessari tre unità funzionali in grado di eseguire addizioni, nel secondo caso solo due. A questo punto si potrebbe pensare che per compiere la scelta migliore basterebbe, nel caso si presentino più forze eguali, considerare altri fattori come l'effettiva occupazione dopo l'assegnazione o introdurre tecniche di look-ahead. 
+\begin{figure}
+\begin{center}
+
+\subfigure[SDG di esempio]{
+\label{f:ex3:a}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram9.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram9.eps}
+}
+}
+}
+\subfigure[Distribuzione di probabilità e somma di probabilità]{
+\label{f:ex3:b}
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram10.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram10.eps}
+}
+}
+\end{center}
+\begin{center}
+\subfigure[Tabella delle forze delle operazioni da schedulare \newline SF = self forces \newline OF = predecessors' and successors' forces \newline TF = total forces ]{
+\label{f:ex3:tab}
+\begin{tabular}{|l|r||r|r|r|}
+\hline 
+Op & CS & SF & OF & TF \\
+\hline
+\hline
++5 & 1 & 0.0 & 0.0 & 0.0 \\
+\hline
++5 & 2 & 0.0 & 0.0 & 0.0 \\
+\hline
++6 & 1 & 0.0 & 0.0 & 0.0 \\
+\hline
++6 & 2 & 0.0 & -0.75 & -0.75 \\
+\hline
+\end{tabular}
+\hspace{0.5 cm}
+\begin{tabular}{|l|r||r|r|r|}
+\hline 
+Op & CS & SF & OF & TF \\
+\hline
+\hline
+-11 & 2 & +0.25 & 0.0 & +0.25 \\
+\hline
+-11 & 3 & -0.25 & 0.0 & -0.25 \\
+\hline
+*12 & 2 & +0.5 & 0.0 & +0.5 \\
+\hline
+*12 & 3 & -0.5 & 0.0 & -0.5 \\
+\hline	
+\end{tabular}
+}
+\end{center}
+\begin{center}
+\subfigure[Scheduling prodotto dal Force Directed]{
+\label{f:ex3:ca}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram11.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram11.eps}
+}
+}
+}
+\subfigure[Scheduling ottimo]{
+\label{f:ex3:cb}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram12.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram12.eps}
+}
+}
+}
+\end{center}
+\hcaption{Esempio di scelta di assegnamento svantaggiosa in caso di costrutti condizionali}\label{f:ex3}
+\end{figure}
+
+A questo punto il problema di scheduling in oggetto viene modificato aggiungendo nuove operazioni come mostrato in \ref{f:ex3:a}. Applicando in questo caso l'algoritmo non si hanno casi di indecisione perchè la scelta che propone di fare l'algoritmo (\ref{f:ex3:tab}) è chiaramente di assegnare l'operazione \emph{+6} al passo di controllo \emph{2}. Il risultato di questa decisione è mostrato in \ref{f:ex3:ca}: tale soluzione utilizza un sottrattore, un moltiplicatore e tre addizionatori. Tuttavia eseguendo lo scheduling manualmente si individua facilmente la soluzione riportata in \ref{f:ex3:cb} che utilizza un sommatore in meno. Alla luce di questo esempio anche la possibilità di introdurre un raffinamento dell'algoritmo in caso di indecisione appare inutile perchè possono presentarsi situazioni simili in cui la scelta suggerita è unica, ma palesemente svantaggiosa. Introdurre una tecnica di look-ahead completa che venisse utilizzata in tutte le occasioni è stato dimostrato essere troppo penalizzante in \ref{c:ori:longcore:look} (tecniche di look-ahead). Conviene quindi analizzare questo particolare tipo di situazioni e chiedersi perchè l'algoritmo suggerisca scelte penalizzanti.
+
+L'algoritmo tiene conto della presenza di istruzioni in mutua esclusione solo nel calcolo delle somme di probabilità: quando si tratta di calcolare la forza di un'operazione tuttavia non si considera come è stata calcolata la somma di probabilità. Quindi il contributo alla forza di un'operazione relativo ad un passo di controllo tiene conto solo della somma di probabilità stessa e della mobilità dell'operazione. Questo comporta che l'algoritmo in realtà per calcolare la forza (gli effetti di un assegnamento di un'operazione a un dato passo di controllo non tenga conto del fatto che l'operazione assegnata sia effettivamente in conflitto con quelle già presenti o meno. Schedulare in un passo di controllo un'operazione appartenente ad un ramo then di un costrutto di controllo se già sono presenti in quel passo di controllo più operazioni dello stesso tipo appartenenti al ramo then stesso e nessuna al ramo else porta ad effetti (è richiesta un'ulteriore unità funzionale di quel tipo per quel passo di controllo) differenti rispetto a schedulare nella stessa situazione un'operazione appartenente al ramo else (non sono richieste ulteriori unità funzionali per quel passo). Questa sostanziale differenza non è tenuta in alcun conto dalla versione originale dell'algoritmo che cerca quindi di non schedulare contemporaneamente operazioni del ramo then e del ramo else di un costrutto condizionale anche se esse non concorrono ovviamente per l'accesso ad una risorsa essendo in mutua esclusione.
+
+Per ovviare a questa mancanza si è deciso di modificare l'algoritmo originale in un modo che può essere definito sostanziale: in particolare si modifica la  formula della forza che ne costituisce il fondamento. La formula originaria è stata infatti modificata sostituendo un termine in questo modo:
+\begin{equation}
+Force(i) = DG(i)\cdot\overline{x}(i)
+\end{equation}
+dove 
+\begin{description}
+\item[Force(i)]  è la forza dello scheduling relativa all'i-esimo passo di controllo;
+\item[DG(i)]  è la somma di probabilità del tipo di unità funzionale cui è assegnata l'operazione nell'i-esimo passo di controllo;
+\item[$\overline{x}$(i)]  è la variazione non della probabilità dell'operazione nell'i-esima operazione a seguito dello scheduling ma la variazione della somma di probabilità dovuta all'assegnamento.
+\end{description}
+Ovviamente la sostituzione evidenziata dell'ultimo termine della formula viene fatta sia in nel calcolo della \emph{self-force}, sia nel calcolo delle \emph{predecessors' and successors' forces}. Nel caso non vi siano costrutti condizionali o nel caso non possano venir schedulate istruzioni in mutua esclusione nel passo di controllo in oggetto il calcolo delle forze risulta uguale a quello classico perchè la variazione della probabilità dell'operazione coincide con la variazione della somma di probabilità. La stessa cosa accade in presenza di costrutti condizionali se l'operazione oggetto della modifica di mobilità non sia in mutua esclusione con alcuna delle operazioni dello stesso tipo schedulabili in quel passo di controllo. Rimane da evidenziare cosa accade nel caso l'operazione di cui si sta calcolando una forza sia in mutua esclusione con qualcun altra dello stesso tipo schedulabile in quel passo di controllo; è bene introdurre prima tre definizioni relative alla somma di  probabilità prima di analizzare ciò che può accadere; ovviamente tutte le definizioni sottintendono che ci si stia riferendo ad un fissato tipo di operazioni:
+
+\begin{itemize}
+\item somma di probabilità \emph{totale}:
+
+la somma di probabilità classica evidenziata in \ref{c:ori:core:prob};
+
+\item somma di probabilità \emph{relativa} (ad un ramo: esso può essere un ramo then o un ramo else):
+
+la somma di probabilità ottenuta considerando solo le operazioni che appartengono ad un ramo condizionale;
+
+\item somma di probabilità \emph{predominante}:
+
+dato un costrutto condizionale e dati i rami che si dipartono da esso, è definita somma di probabilità predominante il valore maggiore fra le somme di probabilità relative e ramo predominante il ramo cui appartiene tale forza.
+\end{itemize}
+
+Vengono ora evidenziati i tre casi possibili (le somme di probabilità si riferiscono ovviamente al tipo di unità funzionale che può eseguire l'operazione):
+\begin{itemize}
+\item l'operazione fa parte del ramo condizionale predominante:
+
+la somma di probabilità complessiva sarà quindi pari a quella di quel ramo sommata al contributo della parte non condizionata del SDG; si possono quindi distinguere due ulteriori sottocasi:
+\begin{itemize}
+\item aumento di probabilità dell'operazione: 
+
+in questo caso l'aumento di probabilità dell'operazione provoca un eguale aumento della somma di probabilità, quindi la forza sarà positiva perchè potenzialmente vi è un aumento della richiesta d'uso dell'unità funzionale e sarà pari a quella calcolata tradizionalmente;
+
+\item diminuzione di probabilità dell'operazione: 
+
+in questo caso la diminuzione di probabilità dell'operazione provoca una diminuzione della somma di probabilità; la diminuzione è pari a quella della probabiltà stessa a meno che essa non faccia diventare un altro ramo quello predominante; in questo caso la diminuzione della somma è pari alla differenza fra le somme di probabilità originarie relative dei due rami: infatti le risorse necessarie per effettuare lo scheduling in un passo di controllo sono determinate da quello che attualmente è il ramo di controllo dominante (sommato alle probabilità delle operazioni che non fanno parte di alcun ramo condizionale);
+\end{itemize}
+\item l'operazione non fa parte del ramo condizionale predominante:
+\begin{itemize}
+\item aumento di probabilità dell'operazione:
+
+se l'aumento di probabilità non trasforma il ramo non dominante in ramo dominante, la variazione della somma di probabilità è nulla: infatti le risorse allocate per schedulare il ramo dominante basteranno per schedulare il ramo non dominante compreso l'aumento attuale; se l'aumento trasforma il ramo in dominante allora servirà allocare delle risorse suppletive per colmare il gap fra vecchio e nuovo ramo dominante; tale differenza corrisponderà all'aumento della somma di probabilità e sarà pari alla differenza fra le somme di probabilità dei due rami dopo l'aumento;
+
+\item diminuzione di probabilità dell'operazione:
+
+la diminuzione di probabilità, intervenendo sul ramo non dominante, non varia le risorse da allocare per effettuare lo scheduling, quindi non varia neppure la somma di probabilità;
+\end{itemize}
+
+\item i rami hanno la stessa somma di probabilità relativa:
+
+\begin{itemize}
+\item aumento di probabilità dell'operazione:
+
+il ramo a cui appartiene l'operazione diventa automaticamente quello dominante, quindi la somma di probabilità totale deve essere incrementata dell'aumento di probabilità dell'operazione;
+
+\item diminuzione di probabilità dell'operazione:
+
+il ramo a cui non appartiene l'operazione diventa automaticamente quello dominante, quindi l'operazione apparterà al ramo non dominante e pertanto la somma di probabilità totale rimane inalterata.
+
+\end{itemize}
+
+\end{itemize}
+
+Le considerazioni fatte riguardano il caso con un unico costrutto condizionale. Nel caso di più strutture condizionali annidate, il ragionamento è simile e va eseguito iterativamente a partire dai costrutto più interno.
+
+\subsection{Correzione nel calcolo di \emph{predecessors' and successors' forces}}
+\label{c:my:var:corr}
+Come mostrato in \ref{c:ori:core:force} (calcolo delle forze) e come verrà ripreso ed esteso in \ref{c:my:var:next} vi sono delle approssimazioni nel calcolo delle \emph{predecessors' and successors' forces}. Modificare l'algoritmo in modo tale che esso tenga conto esattamente degli effetti provocati da un possibile assegnamento risulterebbe controproducente per l'elevata complessità che esso assumerebbe che non giustificherebbe l'eventuale guadagno nella qualità dei risultati. L'approssimazione evidenziata produce in generale una sottostima del valore del \emph{predecessors' and predecessors' forces}. Nel caso di forze dal valore positivo l'approssimazione nel calcolo di questa componente della forza non risulta essere particolarmente penalizzante ai fini delle scelte di assegnamento, in quanto la forza totale sarà tendenzialmente comunque positiva e perciò l'assegnamento corrispondente difficilmente sarà selezionato. Nel caso di forze dal valore negativo invece l'approsimazione nel calcolo può portare come mostrato nella figura \ref{f:ex} a delle scelte palesemente svantaggiose. Infatti l'approssimazione può trasformare in negative forze in realtà positive e pertanto portare a degli assegnamenti che nel caso di un calcolo corretto non verrebbero effettuati.
+
+Per ovviare a questo problema si è scelto di diminuire il peso dei contribuiti alle \emph{predecessors' and successors' forces} qualora essi fossero negativi in modo tale da renderli trascurabili rispetto a quelli positivi. In questo modo non solo si risolve il problema evidenziato ma si fa sì che si scelgano assegnamenti che non solo migliorino in media la distribuzione, ma che provochino il minor numero possibile di aumenti alle somme di probabilità e quindi all'utilizzo di unità funzionali. I contributi negativi verranno quindi considerati solo per ordinare assegnamenti che risulterebbero pari considerando le \emph{self-forces} e i contribuiti positivi delle \emph{successors' and predecessors' forces}.
+
+Ci si può chiedere se questa modifica nel calcolo delle forze provochi il trascurare degli scheduling che effettivamente avrebbero un grosso contributo negativo da parte delle \emph{predecessors' and successors' forces} e che cioè provocherebbero una generale riduzione della concentrazione dell'uso di unità funzionali. Tuttavia se un'operazione dà un contributo negativo ad una qualche \emph{predecessors' and successors' forces}, significa che la riduzione corrispondente della mobilità darà comunque vita ad una \emph{self-force} negativa in almeno uno dei passi della finestra temporale ristretta da un altro assegnamento. Se tale assegnamento avesse anche una \emph{predecessors' and successors' force} non positiva o comunque non eccessivamente positiva, tale assegnamento verrebbe comunque prima o poi scelto dall'algoritmo. In tale modo vengono comunque applicati gli effetti benefici previsti da quegli scheduling che si temeva di trascurare. Una volta comunque applicati tali assegnamenti si potrà quindi valutare se l'assegnamento, trascurando gli effetti indiretti provocati da esso (cioè i contributi di predecessori e successori), provochi effettivamente un miglioramento nella concentrazione dell'utilizzo delle unità funzionali e quindi decidere se debba essere comunque eseguito.
+
+Con la modifica evidenziata in pratica si è variata la filosofia della scelta del prossimo scheduling: non più cercare l'assegnamento che migliori mediamente la somma di probabilità relativa al tipo dell'operazione che si assegna e le somme di probabilità relative ai tipi dei suoi predecessori e dei suoi successori, ma cercare l'assegnamento che migliori la somma relativa all'operazione dell'assegnamento e che non peggiori o peggiori il meno possibile quelle relative allo stesso tipo negli altri passi di controllo e quelle relative agli altri tipi di operazioni coinvolti indirettamente nell'assegnamento. Questa modifica si farà sentire maggiormente nel caso vengano imposti dei vincoli sulle unità funzionali (\ref{c:my:vincoli}).
+
+\subsection{Scelta del prossimo assegnamento da effettuare}
+\label{c:my:var:next}
+Nella sua formulazione originale l'algoritmo prevede che ad ogni iterazione venga scelto quale operazione schedulare e in quale passo di controllo sulla base delle forze relative alle coppie <operazione-passo di controllo>. In \ref{c:my:var:priority} è stato proposto un criterio tramite il quale fornire un ordinamento parziale delle operazioni. Questo ordinamento parziale è utilizzato per limitare le possibili candidate ad essere scelte come prossima operazione da schedulare per limitare la complessità dell'algoritmo e come è stato mostrato esso non incide particolarmente sui risultati ottenuti perchè gli assegnamenti di operazioni appartenenti ad un gruppo hanno poca influenza sulle operazioni degli altri gruppi.
+
+Al contrario all'interno di uno stesso gruppo l'assegnamento di un'operazione incide fortemente sulle altre perchè spesso ne limita le mobilità restringendo le finestre temporali dei loro possibili assegnamenti o modifica i valori delle somme di probabilità. E' quindi cruciale l'ordine in cui all'interno del gruppo vengano scelti gli assegnamenti: la versione originale dall'algoritmo prevede di scegliere l'operazione avente forza minore perchè essa provoca in media una riduzione della richiesta di utilizzo delle risorse necessarie. 
+
+Come sottolineato in \ref{c:ori:core:force} (Calcolo delle Forze) tuttavia mentre il calcolo della \emph{self-force} è per così dire esatto, quello delle \emph{predecessors' and successors' forces} è in realtà un'approssimazione basata sul principio di sovrapposizione degli effetti e pertanto non tiene conto esattamente di tutti gli effetti. Ampliando le osservazioni che sono state fatte si può anche evidenziare come lo scheduling di un'operazione provochi degli effetti non solo nelle operazioni dello stesso tipo schedulabili contemporaneamente (calcolato come \emph{self-forces}) e nei suoi predecessori e successori (calcolato tramite le \emph{predecessors' and successors' forces}), ma anche, seppur in maniera minore ed indiretta nei successori e nei predecessori delle operazioni dello stesso tipo contemporanee all'operazione di cui si sta calcolando la forza. Infatti tendenzialmente queste ultime, se l'assegnamento teorizzato verrà effettuato, avranno meno possibilità di essere schedulate nello stesso passo di controllo e questo cambiamento si ripercuoterà anche sui loro predecessori e successori. Questa caratteristica che viene giustamente trascurata per non appesantire la complessità dell'algoritmo, diverrà molto più significativa una volta introdotti dei vincoli sulle risorse come mostrato in \ref{c:my:vincoli}. Infatti nel caso si abbiano a disposizione un numero finito di risorse, un assegnamento che utilizzasse l'ultima risorsa disponibile impedirebbe di fatto lo scheduling di ulteriori operazioni dello stesso tipo in quel passo di controllo modificando quindi la mobilità loro e dei loro predecessori e successori. Queste considerazioni potrebbero far pensare di dare un peso diverso alle due componenti della forza, analogamente a quanto è stato fatto in \ref{c:my:var:corr}. In questo modo però si perderebbero ulteriori dati che pur se approssimati possono essere significativi. Invece quello che si vuole è sottolineare che i valori delle forze sono delle approssimazioni più o meno accurate degli effetti di un assegnamento.
+
+Un'ulteriore considerazione è che operazioni ad elevata mobilità e di un tipo poco presente in alcuni passi di controllo possono avere un valore di \emph{self-force} uguale in più passi di controllo. Per esempio se si considerano un numero elevato di operazioni dello stesso tipo, la prima avente mobilità da 0 a 4, le altre limitate al passo di controllo 2 e se non sono presenti altre operazioni di quel tipo, la prima operazione avrà \emph{self-force} uguale nei passi di controllo fra 0 e 4, 2 escluso, e tale valore sarà relativamente basso. Questo valore potrebbe far sì che questa operazione sia la prima ad essere schedulata in virtù della \emph{self-force} così elevata tale da assorbire eventuali \emph{successors' and predecessors' forces} positive. A quale passo essa verrebbe assegnata dipenderebbe quindi proprio da queste \emph{successors' and predecessors' forces} che però come si è visto sono approssimate. Tale scelta però potrebbe essere cruciale perchè potrebbe influenzare tutti i successivi assegnamenti: infatti mano mano che gli assegnamenti vengono effettuati, la mobilità delle rimanenti operazioni si riduce finchè molte rimangono con una moblità unitaria e vengono quindi automaticamente assegnate.
+
+\begin{figure}
+\begin{center}
+\subfigure[DFG di esempio]{
+\label{f:ex4:a}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram13.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram13.eps}
+}
+}
+}
+\subfigure[Somme di Probabilità]{
+\label{f:ex4:b}
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram14.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram14.eps}
+}
+}
+\end{center}
+\begin{center}
+\subfigure[Tabella delle forze delle operazioni da schedulare \newline SF = self forces \newline OF = predecessors' and successors' forces \newline TF = total forces]{
+\label{f:ex4:tab}
+\begin{tabular}{|l|r||r|r|r|}
+\hline 
+Op & CS & SF & OF & TF \\
+\hline
+\hline
+*1 & 0 & +0.5 & -0.5 & 0.0 \\
+\hline
+*1 & 1 & -0.5 & +0.5 & 0.0 \\
+\hline
+\textbf{+3} & \textbf{1} & 0.0 & +0.5 & \textbf{+0.5} \\
+\hline
+\textbf{+3} & \textbf{2} & 0.0 &+ 0.5 & \textbf{+0.5} \\
+\hline	
+*5 & 2 & -0.5 & +0.5 & 0.0 \\
+\hline
+*5 & 3 & +0.5 & -0.5 & 0.0 \\
+\hline	
+\end{tabular}
+}
+
+\end{center}
+\hcaption[Esempio di Operazione con Forze solo Positive]{Esempio di Operazione (+3) con Forze solo Positive}\label{f:ex4}
+\end{figure}
+
+Come mostra l'esempio riportato in figura \ref{f:ex4} esistono problemi con operazioni che sin dalla prima iterazione possono avere forze solo positive. Questa caratteristica comporta che tali operazioni verranno schedulate tendenzialmente per ultime. Ciò può comportare che al momento stesso dello scheduling non sia più possibile scegliere in quale passo effettuare l'assegnamento a causa della mobilità ridotta dai precedenti assegnamenti. Tuttavia è facile osservare che queste operazioni possono essere considerate fra le più critiche in quanto qualsiasi scelta viene fatta per il loro assegnamento comporta un peggioramento della distribuzione delle operazioni. Verrebbe quindi da pensare che esse dovrebbero avere precedenza nello scheduling. Un modo per fare ciò potrebbe essere quello di scegliere come prossima operazione da schedulare non quella avente forza minore, ma quella avente la forza migliore più alta dove con forza migliore di un'operazione intendiamo la forza più bassa fra tutte quelle relative agli scheduling di essa possibile. Rimane tuttavia il problema posto inizialmente: le forze come è stato mostrato sono frutto di un calcolo approssimato e quindi alla minor forza, specie se essa si discosta poco dalla seconda più bassa, non necessariamente corrisponde una scelta più vantaggiosa. Sbagliare nell'assegnare queste operazioni che si è visto essere fra le più critiche potrebbe risultare ancora più dannoso. 
+
+Alla luce di queste considerazioni si è quindi affrontato il problema da un altro punto di vista: le scelte compiute dell'algoritmo non devono essere tanto nello stabilire quale operazione debba essere schedulata per prima, ma data un'operazione a quale passo di controllo fra quelli possibili essa debba essere assegnata. La decisione che è stata presa è stata quindi quella di riformulare la scelta del prossimo assegnamento seguendo questo procedimento:
+\begin{enumerate}
+\item si calcola la forza media di ogni operazione ottenuta semplicemente sommando le forze relative a tutti i passi di controllo possibili e dividendo il risultato per il numero stesso dei passi;
+\item si calcola lo scostamento della forza minore dell'operazione dalla forza media;
+\item si sceglie di schedulare come prossima operazione quella che ha lo scostamento più alto; l'assegnamento viene fatto tradizionalmente nel passo di controllo che ha la forza minore.
+\end{enumerate}
+
+In questo modo in un certo senso si cerca di prendere la coppia <operazione-passo di controllo> che ha un margine di guadagno maggiore rispetto alle altre coppie formate con la stessa operazione. Questo consente tendenzialmente di rendere trascurabili le approssimazioni nel calcolo delle forze perchè si considera il caso in cui esse hanno meno rilevanza in termini percentuali. Un'altra possibile scelta sarebbe stata quella di selezionare l'operazione che ha maggiore differenza fra la minor forza e la seconda minor forza, ma in questo caso sarebbero state maggiori le possibilità che le operazioni che sono state definite critiche venissero trascurate almeno inizialmente.
+
+\subsection{Gestione dei cicli}
+La gestione dei costrutti iterativi presentata in questo lavoro di tesi differisce da quella proposta da Paulin e Knight. Infatti nell'analisi del SDG l'algoritmo proposto trascura di considerare gli archi di feedback e quindi le relative dipendenze. Questo corrisponde a schedulare una traccia di esecuzione in cui il corpo dei diversi cicli viene eseguito un'unica volta. Lo scheduling delle operazioni appartenenti alle iterazioni successive rispecchierà le distanze temporali relative fra le operazioni appartenenti alla prima iterazione e verrà implicitamente lasciato agli stadi successivi o al controllore stesso. Il modo più semplice per assegnare le operazioni delle iterazioni successive è schedularle consecutivamente: l'esecuzione dell'iterazione successiva inizia quando è terminata quella precedente. Per migliorare il tempo di esecuzione complessivo in caso di più iterazioni del ciclo è necessario verificare se l'esecuzione di iterazioni successive può essere sovrapposta. Questo può essere delegato a moduli per l'ottimizzazione dello scheduling dei cicli o al Force Directed stesso tramite la replicazione delle operazioni delle diverse iterazioni come mostrato in \ref{c:ori:longcore:cycle} (Scheduling con cicli nella versione originale). 
+
+Le differenze dell'approccio proposto rispetto a quello originale sono:
+\begin{itemize}
+\item non è necessario imporre dei vincoli relativi ai singoli cicli nella descrizione comportamentale;
+\item il tempo di esecuzione di una singola iterazione è mediamente maggiore a parità di risorse allocate;
+\item è possibile schedulare operazioni non appartenenti al corpo del ciclo contemporaneamente a operazioni ad esso appartenenti.
+\end{itemize}
+
+Un modo possibile per forzare un vincolo sulla durata di un'iterazione è manipolare i dati in ingresso all'algoritmo; in particolare è necessario modificare le finestre temporali delle operazioni appartenenti al ciclo in modo tale che la differenza fra l'ASAP dell'operazione corrispondente al costrutto iterativo incrementato del tempo di esecuzione dell'operazione stessa (il primo passo di controllo a cui è possibile assegnare un'operazione appartenente al ciclo) e il maggiore fra i valori ottenuti sommando l'ALAP di un'operazione appartenente al ciclo con il suo tempo di esecuzione (primo passo di controllo in cui sicuramente si può assegnare un'operazione appartenente alla successiva iterazione del ciclo) sia pari al tempo imposto dal vincolo.
+
+\subsection{Complessità dell'Algoritmo modificato}
+La complessità dell'algoritmo può essere calcolata come mostrato in \ref{c:ori:core:compl}, metodo che viene qui ripreso brevemente sottolineando l'unica differenza introdotta; con \emph{n} è indicato il numero di operazioni del problema, con \emph{c} il numero di passi di controllo previsto, con \emph{B} il numero di Blocchi Basici e con \emph{b} il numero medio di operazioni presente in un blocco basico (quindi $b \cdot B = n$):
+\begin{enumerate}
+\item l'algoritmo viene eseguito al massimo per \emph{n} iterazioni;
+\item ad ogni iterazione si calcolano le forze relative a massimo \emph{b} operazioni;
+\item ogni operazione si può schedulare in massimo \emph{c} passi di controllo;
+\item ogni operazione ha al massimo \emph{n} fra predecessori e successori, ciascuna schedulabile in massimo \emph{c} passi di controllo.
+\end{enumerate}
+
+Il risultato di questo calcolo porta ad una complessità complessiva di $O(c^2 n^2 b)$ equivalente a $(O\frac{c^2 n^3}{B})$. La riduzione di complessità rispetto alla versione originale è quindi pari ad un fattore \emph{B}, e quindi nel caso di \emph{SDG} privi di operazioni condizionali il guadagno sarà nullo. L'origine di questa riduzione è dovuta esclusivamente alla modifica mostrata in \ref{c:my:var:priority} (Priorità delle operazioni).
+
+\section{Estensione all'algoritmo con introduzione dei vincoli sulle risorse}
+\label{c:my:vincoli}
+In questa sezione verrà illustrato l'estensione dell'Algoritmo con l'introduzione dei vincoli sulle risorse, ma a differenza di quanto suggerito in \cite{fd1} e \cite{fd2} e riassunto in \ref{c:ori:longcore:vincoli} non verranno allentati i vincoli temporali nel fare ciò. Ci si può domandare quale sia lo scopo di applicare un algoritmo per minimizzare il numero di risorse quando esse siano già state allocate in un numero prefissato. I motivi possono essere molteplici:
+\begin{itemize}
+\item verificare che non vi siano unità funzionali che sono inutilizzate e che quindi potrebbero essere eliminate;
+\item nel caso i vincoli sulle risorse si riferiscano solo ad alcuni tipi di unità funzionali, minimizzare il numero di risorse non vincolate;
+\item cercare di minimizzare il numero di interconnessioni o il numero di registri;
+\item cercare di uniformare l'utilizzo delle unità funzionali nei vari passi di controllo;
+\item fornire non solo un possibile scheduling, ma anche fare il binding di operazioni che possono essere eseguite da più tipi di unità funzionali su uno particolare di questi tipi.
+\end{itemize}
+
+L'ultima motivazione anticipa una delle particolarità dell'estensione all'algoritmo presentata in questa sezione e che verrà precisata in \ref{c:my:vincoli:alloc}.
+
+Le principali modifiche all'algoritmo consistono in una nuova formulazione della distribuzione di probabilità e conseguentemente delle forze e nell'introduzione del \emph{Backtracking}.
+
+\subsection{Introduzione dei vincoli}
+\label{c:my:vincoli:intro}
+I vincoli introdotti si riferiscono al limitare il numero di unità funzionali di un certo tipo allocabili. L'algoritmo non è in grado di rilevare che non esista un possibile scheduling che soddisfi sia il vincolo temporale, sia i vincoli sulle risorse, cioè non è in grado di stabilire se il problema proposto abbia effettivamente soluzione, quindi si devono fornire dei vincoli che permettano almeno uno scheduling ammissibile. E' possibile che i vincoli si riferiscano solo ad alcuni tipi di unità funzionali, ma per applicare concretamente l'algoritmo proposto è necessario fissare dei vincoli per tutti i tipi di unità funzionali come verrà mostrato successivamente. Poichè il numero delle unità funzionali non vincolate sarebbe teoricamente infinito, questo deve essere quantificato in un numero sufficientemente grande: arbitrariamente si è scelto di porlo uguale al numero delle operazioni presenti nel SDG da schedulare. Un suggerimento a come modellizzare il problema è fornito da \ref{c:ori:longcore:arch} (Integrazioni di informazioni relative all'architettura). I pesi da utilizzare non saranno determinati dal costo delle unità funzionali bensì dal numero di esse disponibili. Per ottenerli basta considerare che il peso presente nel calcolo della forza si riferisca esplicitamente alla somma di probabilità cioè utilizzare la formula:
+\begin{equation}
+Force(i) = weighted\_DG(i)\cdot x(i)
+\end{equation}
+dove \begin{description}
+\item[Force(i)] è il contributo alla forza dell'assegnamento relativo all'i-esimo passo di controllo;
+\item[weighted\_DG(i)]  è la somma di probabilità del tipo di unità funzionale che può eseguire l'operazione nell'i-esimo passo di controllo pesata da un opportuno valore;
+\item[x(i)] è la variazione della somma di probabilità nell'i-esimo passo di controllo a seguito dell'assegnamento.
+\end{description}
+
+Per ottenere il valore da attribuire ai pesi basta imporre la condizione per tutte le unità funzionali che la somma di probabilità pesata sia pari ad uno nel caso la somma di probabilità corrisponda esattamente al numero di unità funzionali disponibili di quel particolare tipo. E' proprio per applicare questa uguaglianza che è necessario indicare un numero di unità funzionali anche per i tipi non vincolati in modo tale da poter pesare anche le somme di probabilità relative a questi tipi di unità.
+
+Si considerino due operazioni di tipo diverso, per esempio una somma e una moltiplicazione, e si supponga di avere a disposizione tre sommatori e un moltiplicatore. Si ipotizzi inoltre che le operazioni abbiano la stessa finestra temporale, mobilità pari a due e che nel primo dei due passi di controllo in cui entrambe possono venir schedulate, le somme di probabilità pesate relative ad addizionatori e moltiplicatori siano pari ad uno. Se venisse applicata la formula non pesata della forza e si calcolassero le \emph{self-forces} relative al secondo dei due passi di controllo, il contributo ad esse dato dalla riduzione di probabilità sul primo passo di controllo sarebbe per entrambe -0.5. Si può notare che tale riduzione libererebbe per entrambi i tipi di unità funzionale l'equivalente di 0.5 unità (si è sempre in un ambito probabilistico, quindi ha senso parlare di frazioni di unità funzionale) e quindi sembrerebbe coerente che i due contributi alle forze siano pari. Questi valori uguali rispecchiano però la concezione classica dell'algoritmo. Infatti se si considerano i vincoli sulle unità funzionali ci si accorge che le due riduzioni di finestra temporale liberano rispettivamente $\frac{1}{6}$ e $\frac{1}{2}$ del totale delle unità funzionali. Poichè è fondamentale che i vincoli vengano rispettati appare chiaro che la riduzione della seconda operazione dovrebbe dare un contributo diverso e più pesante della prima (in questo caso dovrebbe avere un valore minore, perchè le forze migliori sono quelle minori). Per imporre questo comportamento è sufficiente utilizzare non la formula classica per il calcolo della forza, ma la versione proposta in \ref{c:my:var:force} con l'accortezza di pesare la forza non solo pesando il primo termine, cioè la somma di distribuzione di probabilità ma anche il secondo cioè la differenza di somma di probabilità. Ovvero:
+\begin{equation}
+x(i) = \triangle weighted\_DG(i) = \triangle DG(i) \cdot weight(fu)
+\end{equation}
+
+dove $weight(fu)$ è il peso relativo all'unità funzionale considerata. Applicando questa formula si otterranno come contribuiti i valori di -0.16 per l'addizione e di -0.50 per la moltiplicazione.
+
+In generale si può notare come l'algoritmo per soddisfare i vincoli relativi alle risorse debba far sì che le somme di probabilità pesate di tutti i passi di controllo e per tutte le unità funzionali debbano avere un valore inferiore all'unità ovvero che sia inferiore ad essa il valore massimo assunto da una somma di probabilità. Questo obbiettivo rientra appieno nella filosofia iniziale del Force Directed.
+
+Alla luce della formula generale appena introdotta
+\begin{equation}
+\label{eq:1}
+Force(i) = weighted\_DG(i)\cdot \triangle DG(i) \cdot weight(fu)
+\end{equation}
+è possibile fornire una riformulazione della formula stessa. Tale riformulazione in pratica non cambierà il valore dei termini presenti nella formula e quindi il suo risultato, ma cambierà il loro significato fornendo una nuova interpretazione al problema della minimizzazione delle risorse.
+
+Fino ad ora le distribuzioni di probabilità descritte nelle sezioni precedenti hanno sempre fatto riferimento alla probabilità che una certa operazione venisse schedulata in un certo passo di controllo e le somme di probabilità sono state riferite al numero di operazioni di un certo tipo che probabilmente sarebbero state assegnate a quel determinato passo di controllo. Con questa nuova formulazione al concetto di somma di probabilità viene sostituito quello di \mbox{\emph{percentuale di occupazione}}. Si associa un valore di questo tipo ad ogni coppia <passo di controllo-tipo di unità funzionale>: questo valore indicherà la percentuale di unità funzionali di quel tipo che probabilmente (nello stesso senso inteso nella precedente formulazione; la probabilità diventa certezza allorchè tutte le operazioni sono state assegnate) sarà occupata in quel passo di controllo. Similmente alla interpretazione originaria si suppone  che se un'operazione ha una mobilità fissata n, tale operazione occuperà probabilmente una frazione di unità funzionale pari a 1/n per tutti i passi di controllo della sua finestra temporale. Per ottenere la percentuale di occupazione non di una singola unità funzionale ma dell'intero blocco è sufficiente dividere il valore ottenuto per il numero stesso delle unità funzionale di quel particolare tipo. Sommando le occupazioni relative alle singole operazioni ed applicando le considerazioni sui costrutti condizionali presentate in \ref{c:my:var:force} si otterranno facilmente le percentuali di occupazione. A questo punto per ottenere i contributi alle forze sarà sufficiente applicare:
+\begin{equation}
+\label{eq:2}
+Force(i) = \%occ(i,F)\cdot \triangle \%occ(i,F)
+\end{equation}
+dove 
+\begin{description}
+\item[Force(i)] è il contributo alla forza dell'assegnamento relativo all'i-esimo passo di controllo;
+\item[\%occ(i,F)] è la percentuale di occupazione del tipo di unità funzionale \emph{F} in quel passo di controllo;
+\item[$\triangle$ \%occ(i,F)] è la variazione di occupazione a seguito dello scheduling.
+\end{description}
+Si può facilmente dimostrare che \eqref{eq:1} e \eqref{eq:2} sono equivalenti cioè che il contributo alla forza calcolato è identico. Per dimostrare ciò vengono introdotti alcuni nuovi simboli:
+\begin{description}
+\item[o] una generica operazione di un tipo fissato eseguibile dalla risorsa \emph{F} e schedulabile in un passo di controllo \emph{i};
+\item[prob(o,i)] è la probabilità che l'operazione \emph{o} venga  schedulata nel passo di controllo \emph{i};
+\item[occ(o,i,F)] è la percentuale di occupazione di unità funzionali di tipo \emph{F} da parte dell'operazione \emph{o} nel passo di controllo \emph{i};
+\item[fu(F)] è il numero di unità funzionali di tipo \emph{F}.
+\end{description}
+Alcune premesse:
+
+
+\begin{align}
+\frac{1}{mobilita'(o)} & = \frac{1}{mobilita'(o)} \notag \\
+\notag \intertext{da questa identità segue}\\
+prob(o,i) & = fu(F) \cdot \frac{1}{mobilita'(o)\cdot fu(F)} \notag \\
+\notag \\
+prob(o,i) & = fu(F) \cdot occ(o,i,F) \notag \\
+\notag \\
+\sum_o prob(o,i,F) & = fu(F) \sum_o occ(o,i,F) \notag \\
+\notag \\
+DG(i) & = fu(F) \cdot \%occ(i,F) \notag \\
+\notag \\
+\label{eq:3}\frac{DG(i)}{fu(F)} & = \%occ(i,F) 
+\end{align}
+
+e per come sono stati ricavati i pesi:
+\begin{equation}
+\label{eq:4}weight(F) = \frac{1}{fu(F)}
+\end{equation}
+
+Si può quindi dimostrare che:
+\begin{align}
+\label{eq:5}
+\%occ(i,F)\cdot \triangle \%occ(i,F) & = Force(i) = weighted\_DG(i)\cdot \triangle DG(i) \cdot weight(F)  \notag \\
+\%occ(i,F)\cdot \triangle \%occ(i,F) & = Force(i) = DG(i) \cdot weight(F)\cdot \triangle DG(i) \cdot weight(F) \notag \\
+\intertext{applicando la sostituzione evidenziata nell'uguaglianza \eqref{eq:4} si ottiene}
+\%occ(i,F)\cdot \triangle \%occ(i,F) & = Force(i) = DG(i) \cdot \frac{1}{fu(F)} \cdot \triangle DG(i) \cdot \frac{1}{fu(F)}  \notag \\
+\intertext{quindi applicando l'uguaglianza \eqref{eq:3} si ottiene}
+\frac{DG(i)}{fu(F)}\cdot \triangle \frac{DG(i)}{fu(F)} & = Force(i) = \frac{DG(i) \cdot \triangle DG(i)}{(fu(F))^2} \notag \\
+\intertext{e poichè fu(F) è di fatto una costante si ottiene l'uguaglianza che dimostra l'equivalenza formule per il calcolo dei contributi delle forze e quindi si dimostra l'equivalenza delle due formulazioni del problema}
+\frac{DG(i) \cdot \triangle DG(i)}{(fu(F))^2} & = Force(i) = \frac{DG(i) \cdot \triangle DG(i)}{(fu(F))^2}
+\end{align}
+
+\subsection{Introduzione del binding su un tipo di unità funzionale}
+\label{c:my:vincoli:alloc}
+Nella formulazione stessa del \emph{force Directed scheduling} è implicito che oltre ad eseguire uno scheduling l'algoritmo effettua anche un'allocazione delle unità funzionali necessarie ad eseguire lo scheduling stesso. Come si è visto in \ref{c:my:vincoli} nelle motivazioni addotte per introdurre i vincoli tecnologici nell'algoritmo, i vincoli più o meno parziali in effetti non limitano la funzione di allocazione dell'algoritmo stesso. Per quanto riguarda il binding finora non è stato considerato nella descrizione dell'algoritmo in quanto quest'ultimo non fa differenza fra le singole istanze di uno stesso tipo di unità funzionale.
+
+I vincoli tecnologici introdotti però potrebbero prevedere l'esistenza di più tipi di unità funzionali che possano eseguire uno stesso tipo di operazione. Solitamente tali tipi di unità funzionali si differenziano per qualche parametro che influisce sulle metriche complessive, come ad esempio il tempo di esecuzione o la potenza dissipata nell'eseguire l'operazione. Nella formulazione originaria dell'algoritmo non essendo contemplati limitazioni al numero di unità funzionali, l'esistenza di più unità funzionali che possono eseguire lo stesso tipo di operazione non complica il problema dello scheduling. Infatti basterà selezionare fra i tipi di unità funzionali quello che risulterà migliore secondo una certa metrica ed assegnare ad esso le operazioni in oggetto. Se si ipotizza però di avere i vincoli sul numero di unità funzionali allocabili questa semplificazione non è più possibile perchè potrebbero essere necessari per ottenere uno scheduling valido entrambi i tipi di unità funzionale. Ci si può chiedere perchè si introducano in un'architettura almeno due tipi diversi di unità che eseguano la stessa operazione. Le motivazioni possono essere diverse:
+\begin{itemize}
+\item uno dei due tipi di unità viene allocato perchè consente di eseguire anche altre operazioni: per esempio sommatori e ALU;
+\item uno dei due tipi di unità ha prestazioni (tempo di esecuzione) migliori dell'altra, ma costi più elevati; si è scelto quindi nello stabilire l'architettura un compromesso fra l'utilizzo esclusivo di un tipo di unità funzionale e fra l'utilizzo esclusivo dell'altro tipo.
+\end{itemize}
+
+Questa possibilità pone un nuovo problema: quale criterio utilizzare per assegnare un'operazione ad una unità funzionale di un tipo piuttosto che ad una di un altro qualora questa sia eseguibile da entrambi. Una prima ipotesi è quella di utilizzare un altro algoritmo per prendere queste decisioni; una volta ottenuto i risultati basterebbe eseguire il Force Directed costruendo le somme di probabilità o l'occupazione delle unità funzionali sulla base degli assegnamenti <operazione-tipo di unità funzionale> già eseguiti. Questi assegnamenti in realtà influenzano direttamente lo scheduling perchè i tempi di esecuzione di un'operazione potrebbero dipendere dal tipo di unità funzionale su cui essa viene eseguita. Questa diversità si ripercuote sulla mobilità dell'operazione e quindi indirettamente anche sulla mobilità di successori e predecessori. Sulla base di queste considerazioni si è scelto di incorporare all'interno dell'algoritmo il binding di un'operazione ad un tipo di unità funzionale (non alla specifica istanza dell'unità funzionale).
+
+Per modellizzare questo problema, viene esteso il concetto di forza: viene infatti calcolata una forza per ogni assegnamento possibile che, sulla base di quanto esposto, sarà costituito non dalla coppia <operazione-passo di controllo> bensì dalla terna <operazione-passo di controllo-tipo di unità funzionale>. 
+Di fatto vi sarà differenza solo per le operazioni che possono essere eseguite da più tipi di unità. Per le altre operazioni esisterà un'unica forza per la coppia <operazione-passo di controllo> e il binding sarà automaticamente fatto con l'unico tipo di unità funzionale possibile. Il calcolo della forza viene fatto utilizzando la formula già proposta in \ref{c:my:vincoli:intro}:
+\begin{equation}
+\label{eq:6}
+Force(i) = \%occ(i,f)\cdot \triangle \%occ(i,f)
+\end{equation}
+cioè utilizzando non la somma di probabilità bensì la percentuale di occupazione di quel tipo di unità funzionale.
+
+Come verrà mostrato tuttavia tale formula nel caso in oggetto non costituisce una reinterpretazione della formula originale con l'introduzione dei pesi poichè le \emph{\%occ} verranno calcolate in modo diverso, quindi l'uguaglianza \eqref{eq:5} non sarà valida in questo caso. Per determinare le $\%occ(i)$ è necessario calcolare i contributi relativi alle singoli operazioni. Essi dipendono dalla probabilità che l'operazione venga schedulata in quel passo di controllo su quel tipo di unità funzionale. In questo caso la funzione di distribuzione della probabilità sarà bivariata: si deve assegnare una probabilità per ogni coppia <tipo di unità funzionale-passo di controllo>. Tale funzione sarà ovviamente nulla per le coppie che non consentono un assegnamento valido. Una caratteristica che tale funzione deve necessariamente avere è:
+\begin{equation}
+\sum_f f(c,f,o) = \frac{1}{mobilita'(o)}
+\end{equation}
+dove \emph{c} è un generico passo di controllo appartenente alla finestra temporale dell'operazione, \emph{f} è un generico tipo di unità funzionale ed \emph{o} è l'operazione. Sostanzialmente cioè la probabilità che un'operazione venga assegnata ad un passo di controllo possibile deve essere uguale per tutti i passi di controllo possibili (come nel caso in \ref{c:ori:core:prob} - calcolo della probabilità nell'algoritmo originale).
+
+Analogamente alla considerazioni fatte per scegliere la funzione di distribuzione della probabilità nel caso monovariato riportate in \ref{c:ori:core:prob} anche in questo caso alla variabile aleatoria indicante l'assegnamento dell'operazione verrà assegnata una distribuzione di probabilità uniforme ma a differenza del caso originale essa sarà bivariata. Tuttavia la seconda variabile sostegno della funzione non sarà il tipo di unità funzionale, ma le singole istanze di unità funzionali presenti. Cioè si ipotizza che la probabilità che una certa operazione sia eseguita in un certo passo di controllo su una unità funzionale che la possa eseguire sia uguale per tutte le unità funzionale. Se si fosse utilizzata come seconda variabile il tipo di unità, si avrebbe avuto che un tipo di unità funzionale di cui sono state istanziate tre esemplari avrebbe avuto la stessa possibilità di schedulare un'operazione di un tipo istanziato in un solo esemplare. Si è quindi ottenuto
+\begin{equation}
+\mathds{P}(c,fn,0) = \frac{1}{mobilita'} \cdot \frac{1}{n(o)}
+\end{equation}
+
+(\emph{fn} è l'n-esima unità funzionale allocata che può eseguire l'operazione, \emph{n(o)} è il numero di unità funzionali che possono eseguire l'operazione \emph{o})
+
+A partire da questa distribuzione di probabilità si costruisce la densità di probabilità bivariata con variabili passo di controllo e tipo di unità funzionali. Per ottenere la probabilità che un tipo di unità possa eseguire l'operazione è sufficiente sommare le probabilità relative alle sue singole istanze:
+\begin{equation}
+\mathds{P}(c,f,o) = \sum_{fn \epsilon f} \mathds{P}(c,fn,o)
+\end{equation}
+
+Si ricava facilmente che tale probabilità, detto $fu(f)$ il numero di unità funzionale di tipo \emph{f} è esprimibile in questi termini:
+
+\begin{equation}
+\mathds{P}(c,f,o) = \sum_{fn \epsilon f} \mathds{P}(c,fn,o) = fu(f) \cdot \mathds{P}(c,fn,o) = \frac{fu(f)}{n(o)} \cdot \frac{1}{mobilita'}
+\end{equation}
+
+cioè la probabilità che un'operazione venga assegnata in un passo di controllo ad un tipo di unità funzionale è la probabilità che essa venga assegnata a quel passo di controllo pesata dal rapporto fra le unità funzionali di quel tipo e il numero complessivo di unità funzionali che possono eseguire quell'operazione.
+
+Come si è visto in \ref{c:ori:core:prob} dire che una certa operazione è assegnata con una certa probabilità a quel passo di controllo equivale a dire che in media una frazione di unità funzionale pari al valore della probabilità verrà occupata in quel passo di controllo. Per ottenere da questa frazione la percentuale di occupazione di un tipo di unità di controllo è sufficiente suddividere questo valore per il numero di unità funzionali disponibili. Si ha così che:
+\begin{equation}
+\label{eq:7}
+occ(o,i.f) = \frac{fu(f)}{n(o)} \cdot \frac{1}{mobilita'} \cdot \frac{1}{fu(f)} = \frac{1}{mobilita' \cdot n(o)}
+\end{equation}
+A questo punto è sufficiente applicare
+\begin{equation}
+\label{eq:8}
+\%occ(i.f) = \sum_o occ(o,i,f)
+\end{equation}
+e l'equazione \eqref{eq:2} per ottenere i contributi alle forze.
+
+Sull'uguaglianza \eqref{eq:7} è bene fare delle considerazioni: il contributo di un'operazione all'occupazione di una certa unità funzionale dipende solo dal numero totale di unità funzionali che possono eseguirla, non dal numero di unità funzionali dei diversi tipi; questo perchè l'uniformità delle distribuzioni di probabilità fa sì che un'operazione tenda a caricare l'occupazione dei diversi tipi di unità funzionali in modo proporzionale. Un secondo aspetto da tenere in considerazione è che se esiste un solo tipo di risorsa che può eseguire un'operazione il numero di unità totali corrisponderà al numero di unità di questo tipo e quindi per tutti questi tipi di unità funzionali, per esempio per quelle di tipo \emph{F} poiche $n(o) = fu(F)$:
+
+\begin{align}
+\label{eq:9}
+\%occ(i, F) & = \sum_o occ(o,i,F) \notag \\ 
+& = \sum_o \frac{1}{mobilita'(o) \cdot n(o)} \notag \\ 
+& = \sum_o \frac{1}{mobilita'(o) \cdot fu(F)} \notag \\
+& = \frac{1}{fu(F)} \cdot \sum_o \frac{1}{mobilita'(o)} \notag \\
+& = \frac{1}{fu(F)} \cdot  DG(i) \notag \\
+& = weighted\_DG(i)
+\end{align}
+
+L'ultima formulazione del problema presentata è applicabile quindi anche ai casi considerati in \ref{c:my:vincoli:intro} e in \ref{c:ori:core}. In quest'ultimo caso è sufficiente ipotizzare che tutti i tipi di unità funzionali siano state istanziate in un numero uguale ed arbitrario. In questo modo le forze calcolate utilizzando le formule \eqref{eq:7}, \eqref{eq:8} e \eqref{eq:2} sono uguali a quelle calcolate con la formula tradizionale a meno di una costante pari all'inverso del quadrato del numero arbitrario. Quindi è possibile realizzare un'unica versione dell'algoritmo utilizzabile in presenza o meno di vincoli sul numero di risorse ed operazioni eseguibili da più tipi di unità funzionali. Ci si può chiedere se anche questa formulazione sia equivalente alle due precedenti. La risposta è no: in realtà il caso senza vincoli sul numero di risorse costituisce un caso particolare del caso con i vincoli, ma non viceversa. Infatti questo caso non costituisce una semplice reinterpretazione del caso base per quanto mostrato nell'uguaglianza \eqref{eq:9}. L'uguaglianza vale per l'ipotesi $n(o) = fu(F)$, condizione vera solo se non vi sono operazioni eseguibili da tipi diversi di unità funzionali. In caso contrario l'occupazione di un tipo di risorsa ($\%occ(i,F)$) non è equivalente ad una somma di probabilità pesata perchè non vi è un unico peso identico per tutta la somma, ma i contributi dovuti alle singole operazioni vengono pesati con un valore tipico del tipo di operazione ($\frac{1}{n(o)}$)che quindi può variare da operazione a operazione:
+\begin{equation}
+\%occ(i, F)  = \sum_o \frac{1}{mobilita' \cdot n(o)}
+\end{equation}
+
+\subsection{Introduzione del Backtracking}
+\label{c:my:vincoli:back}
+Finora si è ipotizzato che l'algoritmo effettui un nuovo assegnamento ad ogni iterazione fino a schedulare tutte le operazioni. Tuttavia il Force Directed scheduling non è un algoritmo esatto: il numero di risorse allocato da esso potrebbe non corrispondere all'effettivo numero minimo di risorse sufficiente a schedulare correttamente il SDG. Allo stesso modo è possibile che la prima soluzione prodotta dall'algoritmo modificato non rispetti i vincoli perchè potrebbe utilizzare per qualche risorsa un numero di unità maggiore di quello minimo che potrebbe e se il vincolo sul numero di unità di questo tipo coincidesse proprio con il minimo, tale vincolo verrebbe violato.
+
+E' quindi necessario che l'algoritmo scarti le soluzioni non rispettose dei vincoli e ne cerchi di nuove fino ad ottenerne una valida. Per fare ciò è stata inserita all'interno di esso la tecnica di \emph{backtracking} (sulle tecniche di backtracking cft \ref{c:art:back}). In particolare il problema dello scheduling viene modellizzato sottoforma di albero di ricerca di grado determinato dai dati del problema. Ogni arco dell'albero rappresenta un assegnamento operazione-unità funzionale-passo di controllo, ogni nodo uno scheduling parziale formato dagli assegnamenti corrispondenti agli archi che congiungono quel nodo alla radice dell'albero, ogni foglia uno scheduling completo. Il percorso che l'algoritmo compie lungo l'albero a partire dalla radice scendendo verso le foglie è determinato quindi dalla scelte fatte ad ogni iterazione. Se l'algoritmo giunge in una foglia corrispondente ad una soluzione non accettabile, esso dovrebbe risalire al nodo precedente e compiere una nuova scelta fra quelle non ancora effettuate. Se non vi fossero più scelte disponibili dovrebbe risalire di un ulteriore livello e così via.
+
+Questa appena fornita è però la versione più semplicistica della tecnica di backtracking utilizzabile. Infatti diversi miglioramenti ad essa possono essere introdotti e verranno esposti qui di seguito.
+
+\subsubsection{Taglio di sottoalberi esplicitamente ``morti'' o ``moribondi''}
+
+\label{c:my:vincoli:back:dead}
+Durante la discesa lungo l'albero è possibile verificare ad ogni nodo, cioè ad ogni aggiunta di un assegnamento allo scheduling parziale costruito fino a quel punto, se lo scheduling corrispondente, seppur incompleto, già violi qualcuno dei vincoli. In tal caso il sottoalbero avente origine da quel nodo avrà come foglie solo soluzioni non ammissibili in quanto in nessun modo gli assegnamenti successivi potrebbero eliminare la violazione del vincolo. Risulta quindi inutile continuare la ricerca lungo quella strada: l'algoritmo annulla l'ultimo assegnamento effettuato (risalendo l'albero di un livello), quindi sceglie il prossimo miglior assegnamento a partire da quel nodo e lo effettua.
+
+Un ulteriore miglioramento delle prestazioni si può ottenere anticipando il taglio del sottoalbero: nel momento in cui viene calcolata la forza relativa all'assegnamento che provocherebbe la violazione dei vincoli si calcola la variazione di occupazione delle unità funzionali. Parallelamente a questo calcolo e senza aumentare la complessità totale dell'algoritmo è anche possibile calcolare la variazione dell'occupazione effettiva delle unità funzionali. Con il termine occupazione effettiva si intende la percentuale di occupazione delle unità funzionali dovuta non a parte di operazioni che probabilmente verranno assegnate in questo passo di controllo, ma ad operazioni che saranno sicuramente assegnate (a meno di successivi passi di backtracking) a questo passo di controllo e a questo tipo di unità funzionali perchè relative ad assegnamenti già fatti nelle iterazioni precedenti. Qualora l'assegnamento relativo alla terna <operazione-passo di controllo-unità funzionale> facesse superare all'occupazione effettiva del tipo di unità funzionale il valore di uno, esso provocherebbe una palese violazione dei vincoli. Quindi è inutile consentire questo assegnamento visto che sarebbe cancellato nel momento in cui esso venisse attuato; pertanto si pone per convenzione ad un valore arbitrariamente elevato la forza relativa a tale tipo di assegnamento. Tali forze verranno indicate nel proseguo del lavoro come "forze bloccate".
+
+Ci si può chiedere se si possano fare considerazioni similari considerando non solo l'operazione in oggetto ma anche predecessori e successori: questa verifica sul fatto che l'assegnamento di un'operazione possa rendere impossibile l'assegnamento di un suo successore o predecessore è possibile ed è semplice fare solo qualora il predecessore o il successore veda la sua mobilità ridotta ad uno. In tal caso è sufficiente controllare (considerando ovviamente le particolarità introdotte dai costrutti condizionali) se esista ancora un'unità funzionale libera capace di eseguire l'operazione. In caso ciò non si verificasse anche in questo caso la forza dell'assegnamento in esame verrà posta ad un valore arbitrariamente grande.
+
+E' da sottolineare come lo schedulare le operazioni a gruppi, a seconda dell'appartenenza ad un blocco basico, possa portare alla luce più precocemente violazioni dei vincoli sulle risorse poichè vengono schedulate a breve distanza le operazioni appartenenti ad un certo blocco basico che per questo motivo avranno le finestre temporale maggiormente sovrapposte. Anticipare la rilevazione delle violazioni riduce i passi di backtracking da compiere e quindi anche il tempo di esecuzione dell'algoritmo.
+
+\subsubsection{Taglio di sottoalberi implicitamente" morti}
+E' facile dimostrare essendo il Force Directed scheduling un algoritmo costruttivo che se uno scheduling parziale non soddisfa uno o più vincoli, non li soddisferanno neppure gli scheduling parziali che lo contengono (uno scheduling parziale contiene un altro scheduling se tutti gli assegnamenti del secondo sono presenti nel primo). Si identifichino quindi gli scheduling parziali come insieme di assegnamenti e si supponga che l'algoritmo abbia prodotto uno scheduling parziale $S0 = \{a_1, a_2, a_{n-1}\}$ e all'iterazione successiva $S1 = \{a_1, a_2, a_{n-1}, a_n\}$. Sia $a_{n+1}$ il successivo miglior assegnamento e quindi $S2 = S1 \cup \{a_{n+1}\}$ e si supponga che $S2$ non rispetti i vincoli. L'algoritmo quindi cancella l'ultima decisione presa e quindi da $S2$ torna a $S1$ cancellando l'assegnamento $a_{n+1}$ (o con il miglioramento suggerito in \ref{c:my:vincoli:back:dead} nel nodo equivalente a $S1$ blocca direttamente la forza relativa a $a_{n+1}$), quindi sceglie il secondo miglior assegnamento indicato come $b_{n+1}$ ottenendo un nuovo scheduling parziale $S3 = S1 \cup \{b_{n+1}\}$. $S3$ soddisfa i vincoli quindi l'algoritmo può accettarlo. Se gli assegnamenti $a_{n+1}$ e $b_{n+1}$ non si riferiscono alla stessa operazione nel nodo che rappresenta lo scheduling $S3$ l'assegnamento $a_{n+1}$ teoricamente risulterà come uno di quelli possibili. Non solo, ci sono anche possibilità che esso risulti come il miglior assegnamento possibile visto che lo era per il nodo $S1$ che differisce da $S3$ per un solo assegnamento. Se venisse effettuato si giungerebbe in un nuovo nodo $S4 = S3 \cup \{a_{n+1}\} = S1 \cup \{a_{n+1}, b_{n+1}\} = S2 \cup \{b_{n+1}\}$. Ma $S2$ è uno scheduling parziale non ammissibile, quindi non lo è neppure $S4$. E' quindi opportuno che nel sottoalbero avente origine da $S1$ venissero tagliati tutti i sottoalberi aventi come arco entrante nel relativo nodo radice un arco contrassegnato con l'assegnamento $a_{n+1}$ perchè conterrebbero solo soluzioni non valide. Nel caso si utilizzasse solo il miglioramento proposto in \ref{c:my:vincoli:back:dead} l'algoritmo dovrebbe comunque ricalcolare la forza in ogni nodo e solo a quel punto si accorgerebbe dell'assegnamento impossibile e la riblocchrebbe. In questo caso quindi il taglio dei sottoalberi aventi come arco in ingresso $a_{n+1}$ coincide semplicemente con l'evitare di dover ricalcolarne la forza. L'assegnamento $a_{n+1}$ però non necessariamente non fa parte di alcuna soluzione valida. Infatti se consideriamo lo scheduling $S5 = S0 \cup \{a_{n+1}\}$, esso a priori non viola alcun vincolo (potrebbe farlo ma per scoprirlo è necessario effettuare i calcoli) poichè $S5$ contiene sì $a_{n+1}$, ma non contiene $S1$.
+
+Queste considerazioni quindi mostrano come sia possibile ogni volta che si taglia un sottoalbero a causa di una violazione di vincoli, tagliare i sottoalberi appartenenti al sottoalbero generato dal genitore del sottoalbero tagliato i cui archi di ingresso siano contrassegnati allo stesso modo.
+
+Come è stato mostrato i tagli possibili si riferiscono solo alla porzione di albero che ha origine nel nodo corrispondente all'ultimo scheduling valido. E' facile constatare però applicando l'algoritmo che difficilmente un assegnamento che fa scattare una violazione del vincolo appartenga alla soluzione ottimale. Tipicamente infatti perchè esso possa diventare valido devono annullarsi una serie di scelte fatte in precedenza, scelte che comunque al momento della loro effettuazione corrispondevano a forze migliori di quella dell'assegnamento colpevole. Le operazioni vengono assegnate in ordine in base alle loro forze: se tale assegnamento fosse effettivamente molto valido avrebbe avuto una forza migliore, sarebbe stato schedulato prima e sarebbero stati quindi altri gli assegnamenti che avrebbero fatto scattare la violazione di vincolo. Sulla base di queste considerazioni e per evitare di esplorare sottoalberi simili a quelli già scartati durante qualche esplorazione, gli assegnamenti scartati in qualche punto dell'algoritmo non vengono poi presi in considerazione come se nulla fosse accaduto, ma vengono penalizzati dando prima strada a scelte e quindi percorsi non ancora intrapresi. In un nodo qualsiasi dell'albero quindi la scelta sul prossimo assegnamento non si baserà più solo sulle forze ma anche sulla storia passata dell'esplorazione.
+
+Spesso però, soprattutto nel caso di vincoli molto stretti diversi assegnamenti di operazioni sono strettamente correlati, in quanto un assegnamento può limitare ad uno la mobilità di molti successori o predecessori. Per questo motivo quando si sceglie un assegnamento è possibile che automaticamente ne vengano imposti alcuni relativi ai successori o ai predecessori dell'operazione in oggetto. Poichè questi assegnamenti sono per così dire costretti, il discorso fatto precedentemente sulla possibilità che un assegnamento che provochi la violazione di un vincolo difficilmente appartenga alla soluzione ottimale decade. Questo comporta che al momento di considerare la storia passata dell'esplorazione si tenga presente anche se assegnamenti poi rivelatisi scorretti non fossero ormai costretti in quanto unici possibili per le'operazioni. In tal caso tali assegnamenti continueranno ad essere tenuti in considerazione.
+
+\subsubsection{Assegnamenti forzati}
+\label{c:my:vincoli:back:ass_forced}
+Durante l'algoritmo è possibile che un'operazione veda ridursi ad uno la propria mobilità ed esista un solo tipo di unità funzionale capace di eseguirla. In tal caso non è necessario aspettare che l'unico assegnamento possibile abbia la miglior forza in assoluto (se poi si utilizza la versione proposta in \ref{c:my:var:force} esso avrà differenza di forza peggiore in quanto 0 e perciò verrà schedulato per ultimo). Posticipando questa scelta che è di fatto obbligata, non solo si ha un'overhead nel tempo di esecuzione dell'algoritmo dovuto al ricalcolo della forza corrispondente, ma si rischia di individuare tardivamente la violazione di vincoli causati da quel particolare assegnamento. Questo comporta la necessità di compiere un maggior numero di passi di backtracking che avrebbero potuto essere evitati evidenziando anticipatamente che l'assegnamento, seppur obbligato, era scorretto.
+
+Esistono inoltre delle situazioni di operazioni che, pur se non hanno mobilità unitaria e un solo tipo di unità funzionale a disposizione, si trovano ad avere implicitamente un unico assegnamento possibile. E' il caso di operazioni che abbiano visto alcuni degli assegnamenti teoricamenti possibili scartati perchè risultati appartenere a scheduling non validi oppure abbiano le forze relative a qualche assegnamento ad un livello arbitrariamente alto ad indicazione che tali assegnamenti provocherebbero una violazione di qualche vincolo. Se il numero di assegnamenti rimasti possibili, cioè aventi una forza calcolata e non imposta arbitrariamente, fosse in numero pari ad uno, la situazione sarebbe simile a quella delle operazioni mostrate nel paragrafo precedente e pertanto è utile al fine della riduzione del tempo di computazione dell'algoritmo effettuare il relativo assegnamento immediatamente.
+
+\subsubsection{Backtracking Anticipato}
+In \ref{c:my:vincoli:back:ass_forced} è stato mostrato che è possibile che un'operazione ad un certo momento dell'esecuzione dello scheduling si ritrovi in pratica con un unico assegnamento ancora effettuabile che non violi alcun vincolo. C'è anche la possibilità che un'operazione ad una certa iterazione dell'algoritmo non abbia più assegnamenti possibili, anche con mobilità ancora positiva, perchè tutti gli assegnamenti all'interno della finestra temporale provocherebbero una violazione di un qualche vincolo. E' evidente che nessuno scheduling costruito a partire da una soluzione parziale in cui un'operazione non può più essere schedulata sarà una soluzione accettabile. Il perchè possa accadere questa circostanza, che solitamente si manifesta dopo una serie di assegnamenti forzati, è dovuta all'approssimazione mostrata in \ref{c:ori:core:force} nel calcolo delle \emph{predecessors' and successors' forces} che si ripercuote anche nel calcolo della occupazione effettiva mostrata in \ref{c:my:vincoli:back:dead}.
+
+Qualora questa condizione si verificasse e poichè sarebbe inutile continuare uno scheduling a partire da quello attuale, cosa che provocherebbe solo assegnamenti inutili che andrebbero comunque poi cancellati, l'algoritmo deve compiere un passo di backtracking. Questo tuttavia non implica che tutte le operazioni tornino ad essere schedulabili in almeno un passo di controllo. E' vero che in quel particolare nodo dell'albero di ricerca non si sarebbe effettuato un assegnamento a partire dalla condizione raggiunta se vi fosse un'operazione non schedulabile, ma è anche vero che quando si compie un assegnamento e poi immediatamente dopo si effettua un passo di backtracking, il nodo in cui ci si trova è quello precedente le due mosse, ma lo stato in cui si trova l'algoritmo è diverso perchè uno dei possibili assegnamenti in quel nodo è stato scartato. Se questo assegnamento era un assegnamento forzato, l'operazione corrispondente non potrà più essere schedulata e sarà quindi necessario un ulteriore passo risalendo l'albero. Il backtracking continuerà a risalire l'albero fino a percorrere in senso inverso un arco non corrispondente ad un assegnamento forzato. A quel punto ripartirà la costruzione dello scheduling.
+
+\subsubsection{Grado dell'albero di Ricerca}
+\label{c:my:vincoli:back:grado}
+Il grado di un albero è il numero massimo di figli che un nodo può avere. Analizzando il problema dello scheduling teoricamente l'albero di ricerca che lo rappresenta potrebbe avere un grado pari al prodotto fra il numero di tipi di unità funzionali, il numero di operazioni e il numero di passi di controllo. Infatti nel caso pessimo inizialmente è possibile che qualsiasi operazione possa venir schedulata in qualsiasi passo di controllo su qualsiasi tipo di unità funzionale. Ad ogni assegnamento possibile corrisponde un arco uscente dal nodo radice dell'albero e conseguentemente un nodo figlio. E' ovvio che questo calcolo è troppo conservativo e che nella maggior parte dei casi il grado dell'albero sarà nettamente inferiore, tuttavia esso è comunque troppo elevato.
+
+In realtà si può facilmente intuire che partendo da uno scheduling parziale, se i migliori assegnamenti via via sopravvissuti conducono tutti a una violazione di qualche vincolo e devono essere scartati, è probabile che il problema principale e la causa delle successive violazioni risieda proprio nello scheduling effettuato fino a quel punto. Per ridurre i tempi di computazione medi si può quindi pensare di limitare il numero di tentativi di estensione di uno scheduling parziale. Raggiunto il bonus di tentativi concessi si cancellerà l'ultimo assegnamento anche se non ha provocato alcuna violazione dei vincoli e se ne proverà un altro. Queste affermazioni si traducono sull'albero di ricerca nella limitazione forzata del suo grado. Utilizzando una metafora botanica, se il numero di tentativi viene fissato ad n, ad ogni nodo verranno tagliati tutti i rami verso i figli esclusi gli n ritenuti più robusti.
+
+E' possibile anche se molto poco probabile che in questo modo vengano eliminate dall'albero di ricerca tutte le foglie relative alle soluzioni valide. In questo malaugurato caso quindi l'algoritmo non troverebbe alcuna soluzione. Per ovviare a ciò è sufficiente impostare l'algoritmo in modo tale che, qualora giunga ad esplorare l'albero potato senza trovare alcuna soluzione, riparta da zero costruendo un nuovo albero di ricerca forzando nuovamente un grado, ovviamente maggiore di quello precedente, che tenga anche conto delle scelte già eliminate nell'albero precedente perchè causa di violazioni dei vincoli. Se nuovamente non si trovasse una soluzione valida, è possibile ripetere più volte l'estensione del grado dell'albero.
+
+\subsection{La scelta del prossimo assegnamento da effettuare}
+\label{c:my:vincoli:next}
+In \ref{c:my:var:next} è stata proposta una modifica su come effettuare la scelta relativa al prossimo assegnamento da effettuare. La modifica consiste nello scegliere non l'operazione che ha per qualche suo assegnamento la minor forza, ma quella che abbia un maggior scostamento fra la forza minore e la forza media relativa a tutti i suoi possibili assegnamenti. Tuttavia in \ref{c:my:vincoli:back:dead} si è scelto di porre ad un valore arbitrariamente alto la forza relativa ad assegnamenti di operazioni non più possibili perchè violanti vincoli sulle risorse. In quel frangente non ci si è preoccupati di determinare con precisione questo valore arbitrario perchè era sufficiente che fosse abbastanza elevato da risultare maggiore di qualsiasi forza calcolabile in modo tradizionale. Questo introduce un problema però nel calcolo della forza media di un'operazione: come devono essere considerate le forze bloccate ai fini del calcolo della media delle forze? Infatti poichè il valore di una forza bloccata è arbitrario (si impone almeno che tutte le forze bloccate abbiano il medesimo valore), valori diversi potrebbero cambiare il candidato al successivo assegnamento. Esistono diverse soluzioni a questo problema. Quale sia meglio utilizzare non è immediato e potrebbe essere deciso sulla base di una serie di test approfonditi. Le possibilità per calcolare le forze sono:
+\begin{itemize}
+\item considerare le forze bloccate come normali forze e quindi utilizzare il valore arbitrario nel calcolo della media ipotizzando che le variazioni dovute alla variazione di tale valore non siano significative;
+\item fare la media delle forze non bloccate e trascurare quelle bloccate;
+\item considerare le forze bloccate come aventi un valore pari a quello peggiore fra le forze non bloccate;
+\item considerare le forze bloccate come aventi valore nullo; questo provoca rispetto al secondo caso un aumento dello scostamento forza media-forza migliore nel caso di forza media negativa e una sua diminuzione nel caso opposto.
+\end{itemize}
+
+\subsection{Riflessioni sulla priorità delle operazioni per questa versione dell'algoritmo}
+\label{c:my:vincoli:priority}
+In \ref{c:my:var:priority} è stato introdotto il concetto di priorità delle diverse operazioni e si è suggerito di introdurre nell'algoritmo la schedulazione delle operazioni in base alla loro appartenenza ad un blocco basico piuttosto che un altro. Non è stato tuttavia fornito un criterio su come ordinare i blocchi basici e quindi su come ordinare i diversi gruppi di operazioni. Sulla base delle considerazioni fatte nelle sezioni precedenti è ora possibile fornire un nuovo criterio di ordinamento, seppure anch'esso parziale.
+
+Si considerino tre blocchi basici: un blocco coincidente con il ramo then di un costrutto condizionale (blocco \emph{then}), un blocco coincidente con il ramo else dello stesso costrutto condizionale (blocco \emph{else}) e il blocco successivo al termine della struttura condizionale e quindi successivo ad entrambi i rami che verrà chiamato blocco \emph{endif}. Si consideri che non vi siano dipendenze fra le operazioni del terzo blocco e le altre: in questo caso le finestre temporali delle operazioni dei tre blocchi molto probabilmente si sovrapporranno per più di passi di controllo. Si avranno quindi operazioni dei tre blocchi schedulabili nello stesso passo di controllo. L'ordine dato ai blocchi basici condizionerà come si è visto l'ordine in cui le operazioni verrano schedulate. Si ipotizzi che le forze inducano a schedulare tre operazioni di uno stesso tipo nello stesso passo di controllo anche se ciò non fosse possibile a causa del ridotto numero di unità funzionali e che le soluzioni ammissibili prevedano che venga schedulata in quel passo di controllo solo l'operazione non condizionata cioè appartenente al blocco \emph{endif}. Se venissero assegnate prima le operazioni dei blocchi basici appartenenti ai rami condizionali, non essendo esse in conflitto per l'uso di risorse non violerebbero alcun vincolo. Solo al momento di schedulare le operazioni appartenenti al terzo blocco basico, l'algoritmo calcolerebbe le forze della terza operazione e si accorgerebbe che non ne è più possibile lo scheduling. Se invece il blocco \emph{endif} venisse schedulato per primo, al momento del calcolo delle forze del secondo blocco, sia esso quello \emph{then} o quello \emph{else} l'algoritmo si accorgerebbe dell'errore.
+
+In generale si può dire che l'algoritmo debba cercare di far "incastrare" i pezzi di SDG relativi ai diversi blocchi basici: quelli che non sono figli di nessun costrutto condizionale non saranno in mutua esclusione con nessun altro blocco, quindi c'è il concreto rischio che se venissero considerati per ultimi sarebbe difficile riuscirli ad incastrarli con tutti, cioè c'è il rischio che le operazioni ad essi appartenenti non trovino più risorse libere per essere eseguite perchè già completamente occupate. Conviene quindi che essi vengano schedulati immediatamente in modo tale da considerare i conflitti con gli altri blocchi basici, che sicuramente esistono, mano mano che questi ultimi verranno schedulati. Estendendo le considerazioni al caso di più costrutti condizionali annidati, si può dedurre che convenga lasciare per ultima la schedulazione dei blocchi basici aventi conflitto per l'accesso con le risorse con il minor numero possibile di blocchi: le operazioni di tali blocchi saranno in conflitto con un numero minore di operazioni rispetto a quello degli altri blocchi.
+
+Il criterio quindi che verrà utilizzato per ordinare i blocchi basici cioè i gruppi di operazioni da schedulare è il numero decrescente di blocchi con cui essi sono in mutua esclusione. Tale ordine è ancora una volta però parziale perchè non vengono forniti metodi per ordinare i blocchi a parità di mutue esclusioni, ma verrà utilizzato un sottoordinamento casuale.
+
+Questo criterio in realtà non produce significativi miglioramenti nei risultati, perchè cambia semplicemente l'ordine con cui considerare le operazioni. Tuttavia vi è un miglioramento significativo nella tempestività con cui vengono portati allo scoperto le violazioni ai vincoli sulle risorse che anche se non manifeste possono essere già ormai inevitabili in uno scheduling parziale. Esistono infatti degli scheduling parziali che seppure non violano alcun vincolo non possono essere contenuti in alcuna soluzione accettabile. Scoprire tempestivamente questa caratteristica in uno scheduling consente di evitare parecchi passi di backtracking e pertanto di ridurre sensibilmente il tempo di computazione dell'algoritmo.
+
+\subsection{Analisi della complessità dell'Algoritmo}
+Nel caso in cui durante la costruzione dello scheduling l'algoritmo non violi nessun vincolo tecnologico, la sua complessità rimane $O(\frac{c^2 n^3}{B})$ (\emph{c} è il numero di passi di controllo, \emph{n} il numero delle operazioni, \emph{B} il numero di Blocchi Basici, \emph{f} il numero di tipi di unità funzionali) in quanto l'overhead per la gestione delle strutture dati necessarie a gestire la possibilità del backtracking è trascurabile. Rimane da considerare cosa succede se l'algoritmo deve eseguire qualche passo di backtracking. Seguendo la teoria dei grafi e considerando il caso pessimo la complessità risulta essere addirittura fattoriale, in quanto il grado dell'albero dipende dalla dimensione del problema, e pari a $O({\frac{n c f}{B}}^{\frac{n c f}{B}})$. Introducendo la limitazione suggerita in \ref{c:my:vincoli:back:grado} (Grado dell'albero di Ricerca) la complessità del caso pessimo teoricamente rimane uguale perchè si deve considerare la possibilità che si trovi una soluzione accettabile solo all'ultima espansione del grado dell'albero. In realtà però è molto difficile trovare problemi di scheduling in cui non si scopra una soluzione accettabile ponendo il grado dell'albero di ricerca pari a 4. Pertanto la vera complessità temporale del caso pessimo si può considerare esponenziale e pari a $O(4^n)$. Questa rimane comunque una considerazione sul caso pessimo: la complessità del caso medio può essere modellizzata come $O((n+p)\frac{c^2 n^3}{B})$ dove \emph{p} indica il numero di backtracking che si sono resi necessari. Questo valore ovviamente è possibile stabilirlo sono al termine dell'esecuzione dell'algoritmo perchè dipende non solo dalla dimensione del problema ma anche dal valore dei dati in ingresso. Mediamente tuttavia il numero di passi di backtracking è nello stesso ordine di grandezza del numero di operazioni. In conclusione quindi possiamo definire la complessità media dell'algoritmo modificato come $O(\frac{i c^2 n^3}{B})$ dove \emph{i} è un intero positivo che dipende dalle caratteristiche dal particolare problema di scheduling da risolvere.

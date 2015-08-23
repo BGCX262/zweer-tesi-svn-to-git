@@ -1,0 +1,44 @@
+\chapter{Introduzione}
+\label{c:intro}
+\thispagestyle{empty}
+
+\begin{quotation}
+{\footnotesize
+\noindent{\emph{``The complexity for minimum component costs has increased at a rate of roughly a factor of two per year ... Certainly over the short term this rate can be expected to continue, if not to increase. Over the longer term, the rate of increase is a bit more uncertain, although there is no reason to believe it will not remain nearly constant for at least 10 years. That means by 1975, the number of components per integrated circuit for minimum cost will be 65,000. I believe that such a large circuit can be built on a single wafer''}
+}
+\begin{flushright}
+Gordon E. Moore, 1965 \cite{moore}
+\end{flushright}
+}
+\end{quotation}
+
+\vspace{0.5cm}
+
+Negli ultimi decenni si è verificato quanto anticipato da Moore a proposito dello sviluppo delle tecniche di integrazione di componenti digitali su silicio. Questo ha comportato un aumento considerevole della complessità del progetto di sistemi dedicati: a causa di ciò, a differenza degli albori della progettazione digitale, non è più possibile delegare completamente al progettista o ad un gruppo di essi l'intera attività di progettazione. Per questo motivo sempre più importanza rivestono gli strumenti di sviluppo automatico per la progettazione, strumenti che partendo da una specifica formale delle funzionalità del sistema generino la descrizione di una sua implementazione sintetizzabile.
+
+Un altro aspetto critico nella progettazione di sistemi digitali che è emerso soprattutto negli ultimi anni è quello dell'ottimizzazione d'area e di potenza, a causa della grande diffusione che stanno avendo i sistemi portatili. Tuttavia il problema di minimizzare le metriche relative a questi aspetti è in contrasto con un altro aspetto significativo delle caratteristiche di un implementazione che consiste nelle prestazioni: solitamente si fissano dei vincoli relativi alle metriche di un aspetto e si cerca di minimizzare quelle relative all'altro aspetto.
+
+Questo lavoro si inserisce proprio all'interno di uno strumento di sviluppo automatico ed in particolare nella sua parte dedicata alla sintesi ad alto livello. All'interno di essa si è posta l'attenzione sulle fasi di scheduling e di allocazione delle risorse: questi due aspetti ed in special modo il secondo influenzano fortemente la qualità dell'implementazione relativamente alle metriche riguardanti area e potenza dissipata. Si è scelto quindi di lavorare sul Force Directed scheduling, in quanto esso pur essendo un algoritmo di scheduling incorpora al suo interno la funzione di allocazione delle risorse.
+
+Il contributo portato da questo lavoro di tesi consiste proprio in una serie di modifiche applicate alla versione originale del Force Directed scheduling ed in particolare:
+\begin{itemize}
+\item modifiche atte a migliorare la qualità dei risultati prodotti (numero di unità funzionali allocate);
+\item modifiche atte a migliorare il tempo di computazione dell'algoritmo tramite diminuzione della sua complessità;
+\item introduzione della gestione di vincoli sul numero massimo di unità allocabili per i diversi tipi di risorse;
+\item introduzione della scelta del tipo di unità funzionale a cui assegnare un'operazione nel caso esistano più tipi che la possono eseguire.
+\end{itemize}
+
+Con queste modifiche, in particolare con le ultime due, si permette all'algoritmo di considerare contemporaneamente vincoli relativi a due tipi diversi di metriche, quali quelle relative al numero di unità funzionali allocate e quelle relative alle prestazioni e minimizzare quelle del primo tipo. La differenza rispetto a molti degli approcci classici consiste proprio nel considerare la possibilità di vincolare anche parametri relativi alla metrica che si vuole minimizzare.
+
+La tesi è suddivisa in sette capitoli; il secondo capitolo propone l'analisi dello stato dell'arte relativo alla sintesi ad alto livello. In particolare vengono analizzate le diverse fasi che costituiscono questo processo soffermandosi sui linguaggi utilizzati per la descrizione della specifica e sulle rappresentazioni intermedie utilizzate nel processo di sintesi. Vengono poi illustrati i diversi algoritmi di scheduling proposti in letteratura e presentata brevemente la tecnica del Backtracking.
+
+Il terzo capitolo descrive in modo critico la versione originale dell'algoritmo del Force Directed scheduling proposto da Paulin e Knight compreso di estensioni.
+
+Il quarto capitolo mostra le modifiche proposte all'algoritmo stesso che si riferiscono sia alla sua versione base sia all'introduzione di vincoli sulle risorse nel problema dello scheduling da risolvere.
+
+Nel quinto capitolo viene fornita una breve descrizione di PandA, il framework all'interno del quale è stato implementato l'algoritmo proposto, e dell'implementazione realizzata sottolineando quali parametri sono stati scelti.
+
+Nel sesto capitolo sono riportati i risultati sperimentali relativi alle diverse versioni dell'algoritmo, a partire da quella originaria, applicate su diversi benchmark per evidenziare i guadagni in termini di qualità di risultati o di tempi di computazione forniti dalle diverse modifiche proposte.
+
+L'ultimo capitolo riporta l'analisi conclusiva del lavoro svolto evidenziando i possibili sviluppi futuri.
+

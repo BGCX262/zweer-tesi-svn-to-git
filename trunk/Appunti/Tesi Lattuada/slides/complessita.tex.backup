@@ -1,0 +1,14 @@
+\begin{slide}{Riduzione della complessita' dell'algoritmo}
+\begin{itemize}
+\item \red Complessità originale dell'algoritmo: $O(c^2 n^3)$ \black
+\item complessità elevata per la visione globale del problema;
+\item scomposizione del problema in parti: scheduling di singole parti del sistema;
+\item durante lo scheduling di una parte si considerano le informazioni relative a tutto il sistema;
+\item ad ogni iterazione è necessario ricalcolare solo i dati della singola parte;
+\item per la scomposizione in parti si utilizzano i blocchi basici:
+\begin{itemize}
+\item \red nuova complessità: $O(\frac{1}{B}c^2 n^3)$ \black ;
+\item nessun guadagno in assenza di costrutti condizionali.
+\end{itemize}
+\end{itemize}
+\end{slide}

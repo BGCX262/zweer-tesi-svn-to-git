@@ -1,0 +1,490 @@
+\chapter{Analisi dello Stato dell'Arte}
+\label{c:art}
+\thispagestyle{empty}
+
+\vspace{0.5cm}
+
+In questo Capitolo verrà mostrata una panoramica sullo stato dell'arte relativo alla Sintesi ad Alto Livello, con particolare attenzione agli algoritmi di scheduling.
+
+Nella prima parte verrà data una breve descrizione di che cosa si intenda per Sintesi ad Alto Livello, illustrando le fasi principali in cui questo processo può essere suddiviso e  soffermandosi su alcuni aspetti particolari quali i linguaggi per formalizzare la descrizione comportamentale di un sistema che ne costituisce il dato in ingresso, le rappresentazioni intermedie da esso utilizzate e come viene modellizzato il prodotto di tale processo.
+
+Nella seconda parte verranno elencati i principali algoritmi di scheduling presenti in letteratura, raggruppati in base alle loro caratteristiche, e di ciascuno di essi verranno fornite le caratteristiche principali. Una descrizione molto più accurata dell'algoritmo Force Directed scheduling e una sua analisi verranno forniti nel capitolo \ref{c:ori} in quanto esso costituisce la base di partenza dell'algoritmo di scheduling sviluppato in questo lavoro.
+
+Nell'ultima parte verrà data una breve descrizione della tecnica del Backtracking che è anch'essa utilizzata all'interno del lavoro presentato.
+
+\section{La Sintesi ad Alto Livello}
+La Sintesi ad alto livello è un processo che partendo da una descrizione comportamentale di un sistema, eventualmente corredata da vincoli, costruisce una descrizione dello stesso sistema a livello RT, quindi facilmente implementabile (per i diversi livelli di descrizione di un sistema confrontare \ref{c:art:alto:astr}). L'obiettivo che si vuole raggiungere utilizzando questo tipo di processo all'interno della progettazione di sistemi dedicati consiste nell'alzare il livello di astrazione a cui deve lavorare il progettista stesso tramite la realizzazione di strumenti automatici che gestiscano o semplifichino il problema della progettazione, dell'intero sistema o di alcune sue parti, ad un livello via via sempre più elevato. Maggiore sarà il livello a cui potrà lavorare lo strumento automatico, minore sarà l'attività lasciata al progettista. 
+
+Oltre a permettere un più rapido sviluppo del progetto, un secondo aspetto positivo della Sintesi ad Alto Livello, se correttamente eseguita, è il consentire l'automatizzazione parziale o totale della verifica dell'implementazione del sistema, diminuendo così la probabilità di errore e riducendo non solo il tempo necessario alla fase stessa di verifica, ma anche quello relativo alla fase di debugging.
+
+\subsection{Fasi della Sintesi ad Alto Livello}
+E' possibile suddividere la Sintesi ad Alto Livello in una serie di fasi principali che verranno eseguite in sequenza. Il flusso di progetto tuttavia non è obbligatoriamente lineare, ma è possibile che alcune singole fasi, o addirittura alcune successioni di esse vengano ripetute per compiere raffinamenti successivi all'implementazione nel caso quelle particolari fasi o quelle immediatamente successive non riescano a fornire risultati soddisfacenti:
+\begin{enumerate}
+\item Compilazione
+
+La descrizione comportamentale del sistema viene tradotta in una serie di rappresentazioni intermedie per essere meglio gestita dalle fasi successive.
+\item Ottimizzazione
+
+Vengono individuate ed eseguite trasformazioni sulla descrizione intermedia del sistema atte a semplificarlo o a renderlo più facilmente trattabile (sono le ottimizzazione tipiche svolte dai compilatori).
+\item Analisi del problema e costruzione dell'architettura
+
+In questa fase dalle rappresentazioni intermedie vengono estratte o calcolate le informazioni necessarie alla sintesi del datapath e del controllore.
+Essa si articola in tre sottofasi che a seconda degli algoritmi utilizzati possono essere eseguite contemporaneamente o in sequenza:
+\begin{enumerate}[a]
+\item Allocazione
+
+Vengono definiti numero e tipo delle risorse: funzionali, di memorizzazione, e di comunicazione; per fare ciò è necessario trovare un equilibrio fra l'ottimizzazione dei costi che spinge ad utilizzare poche risorse relativamente economiche e l'ottimizzazione delle prestazioni che spinge ad utilizzare un numero maggiore di risorse più performanti e quindi solitamente più costose. Il costo non è necessariamente il costo economico dei singoli componenti, ma può essere per esempio l'area occupata dall'implementazione o la potenza consumata durante il suo uso. Per poter affrontare correttamente il problema è necessario avere stime più o meno accurate delle metriche in gioco relative ai diversi componenti.
+
+Esistono due principali approcci:
+
+\begin{itemize}
+\item \emph{Approcci costruttivi}: le unità funzionali, di memorizzazione e di interconnessione vengono allocate mentre viene visitato il CDFG (la sua descrizione è in \ref{c:art:alto:inter:CDFG}) seguendo l'ordine delle dipendenze. Esempi di questo approccio sono forniti da \cite{allcostr1} e \cite{allcostr2}. Le soluzioni ottenute con queste tecniche possono discostarsi molto da quelle ottime;
+\item \emph{Approcci decompositivi}: il problema dell'allocazione viene scomposto in parti diverse, viene risolto per ciascuna di esse ed infine viene prodotta la soluzione complessiva. Esempi ne sono forniti in \cite{fd2} e \cite{ASAP1}.
+\end{itemize}
+
+\item Scheduling
+
+Il tempo di esecuzione della funzionalità viene suddiviso in intervalli uguali chiamati passi di controllo o cicli di clock; le singoli operazioni vengono assegnate ai diversi passi di controllo. I possibili approcci a questo problema verranno mostrati in \ref{c:art:sch}.
+\item Binding
+
+Consiste nel mappare elementi presenti nella descrizione del sistema su componenti architetturali dopo aver scelto il tipo delle interconnessioni (multiplexer piuttosto che bus). In particolare consiste nel mapping di:
+\begin{itemize}
+\item Variabili su Unità di Memorizzazione
+\item Operazioni su Unità Funzionali
+\item Trasferimenti di dati o comunicazioni fra unità funzionali o di memorizzazione su interconnessioni.
+\end{itemize}
+\end{enumerate}
+
+\item Sintesi del controllore
+
+In quest'ultima fase viene sintetizzato il controllore modellizzato solitamente come macchina a stati finiti.
+\end{enumerate}
+
+\subsection{Livelli di Descrizione-Astrazione}
+\label{c:art:alto:astr}
+
+\begin{figure}
+\centering
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.5]{figures/Ydiag.png}
+}{
+\includegraphics[scale = 0.5]{figures/Ydiag.eps}
+}
+\ccaption{Livelli di astrazione e domini di rappresentazione}
+\label{f:Ydiag}
+\end{figure}
+
+Il sistema ed in particolare il circuito che lo implementa possono essere descritti in modalità diverse. Ogni modalità è caratterizzata da due aspetti: il dominio di rappresentazione utilizzato (ovvero il particolare punto di vista che si adotta) e il livello di astrazione (ovvero il dettaglio utilizzato nella descrizione stessa). Le possibili modalità di rappresentazione sono esemplificate dalla figura \ref{f:Ydiag}: gli assi rappresentano i diversi domini di rappresentazione mentre le circonferenze rappresentano i diversi livelli di astrazione, con l'accuratezza che cresce avvicinandosi al centro dei cerchi.
+
+I domini di rappresentazione del circuito (\cite{Ydiag}) sono essenzialmente tre:
+\begin{itemize}
+\item Funzionale
+
+In questo dominio la descrizione fornisce solo le funzionalità fornite dal circuito e non la sua struttura; il circuito, o una sua frazione viene rappresentato come una scatola nera di cui vengono forniti solo ingressi, uscite e come queste dipendano dagli ingressi ovvero la funzione che esso implementa. Oltre alla funzionalità implementata riveste grande importanza in questo tipo di rappresentazioni la descrizione della sua interfaccia cioè le relazioni temporali fra i diversi segnali di ingresso e uscita.
+
+\item Fisico
+
+In questo dominio la descrizione fornisce solo la struttura fisica del circuito ignorando le funzionalità implementate. Vengono specificate la posizione nello spazio dei diversi componenti e la struttura delle interconnessioni.
+
+\item Strutturale
+
+Le rappresentazioni appartenenti a questo dominio costituiscono un compromesso fra quelle appartenenti agli altri due domini. In genere sono utilizzate nel passaggio fra il primo e il secondo tipo di rappresentazione. Infatti è possibile per il passaggio Funzionale-Strutturale far corrispondere a molti dei componenti della prima rappresentazione dei componenti della seconda e tale corrispondenza è univoca sotto predeterminati vincoli tecnologici. Per passare dalla rappresentazione Strutturale a quella Fisica invece sono in genere necessari due passi: nel primo passo vengono disposti in maniera approssimativa i diversi elementi circuitali curando il posizionamento delle interconnessioni, nel secondo ai componenti circuitali si sostituisce la realizzazione fisica di essi.
+\end{itemize}
+
+I livelli di astrazione delle descrizioni, ordinati in modo crescente (cui corrisponde un ordine decrescente di dettaglio) sono invece cinque. Per ciascuno di essi verrà brevemente presentata la descrizione relativa ad ogni dominio di rappresentazione:
+
+\subsubsection{Livello circuito}
+\begin{itemize}
+\item[] dominio funzionale: la descrizione è realizzata attraverso funzioni di traferimento e diagrammi temporali;
+\item[] dominio strutturale: gli elementi base utilizzati nella descrizione sono transistor, resistenze, fili di interconnessione;
+\item[] dominio fisico: la rappresentazione utilizzata per la descrizione è quella tipica di un layout di un circuito integrato.
+\end{itemize}
+
+\subsubsection{Livello logico}
+\begin{itemize}
+\item[] dominio funzionale: si utilizzano espressioni booleane;
+\item[] dominio strutturale: gli elementi base sono porte logiche, flip-flop e celle;
+\item[] dominio fisico: vengono descritti posizionamento di celle e moduli nello spazio.
+\end{itemize}
+
+\subsubsection{Livello microarchitetturale o RT}
+\begin{itemize}
+\item[] dominio funzionale: la descrizione utilizza registri e macchine a stati finiti;
+\item[] dominio strutturale: i componenti della descrizione sono le diverse unità funzionali: unità aritmetico-logiche, multiplexer, registri, microcontrollori e micromemorie;
+\item[] dominio fisico: viene descritto il posizionamento dei componenti elencati nello spazio.
+\end{itemize}
+
+\subsubsection{Livello algoritmico-funzionale}
+\begin{itemize}
+\item[] dominio funzionale: la funzionalità è descritta attraverso un algoritmo in cui sono definite strutture dati ed operazioni che le devono manipolare; non è necessario che vi sia poi corrispondenza fra struttura dati e componenti architetturali così come fra operazioni e unità funzionali o unità di controllo; possono essere utilizzati per la descrizione anche linguaggi di descrizione dello hardware;
+\item[] dominio strutturale: i componenti di base sono gli stessi del livello microarchitetturale, ma raggruppati in macroblocchi quali linee di trasferimento dati, unità di controllo e unità di memorizzazione per sottolineare gli elementi di comunicazione e sincronizzazione fra i diversi componenti;
+\item[] dominio fisico: gli elementi utilizzati nella descrizione sono le schede.
+\end{itemize}
+
+\subsubsection{Livello sistema}
+\begin{itemize}
+\item[] dominio funzionale: viene descritta la funzionalità specificandone i vincoli, in particolare quelli relativi alle prestazioni; si tralascia qualsiasi aspetto implementativo;
+\item[] dominio strutturale: gli elementi utilizzati nella descrizione sono processori, memorie, unità di controllo, switch e bus;
+\item[] dominio fisico: viene descritto il posizionamento e la suddivisione del circuito a livello di gruppi di schede o di armadi.
+\end{itemize}
+
+\subsection{Linguaggi di specifica del sistema}
+I linguaggi di specifica sono linguaggi utilizzati per fornire una descrizione comportamentale del sistema che abbia caratteristiche di formalità. Tali linguaggi inoltre consentendo un diverso livello di astrazione possono essere utilizzati anche per le rappresentazioni intermedie durante il processo di Sintesi ad Alto Livello. I linguaggi più utilizzati sono i linguaggi di descrizione dello hardware (HDL) e SystemC che può essere considerato una loro evoluzione.
+
+I linguaggi della descrizione dello hardware sono stati introdotti per favorire lo sviluppo di sistemi hardware permettendo di descrivere con uno stesso linguaggio le caratteristiche del sistema a diversi livelli d'astrazione: funzionale, transazionale, architetturale o logico. E' quindi possibile utilizzare un unico linguaggio come rappresentazione intermedia nelle diverse fasi della Sintesi ad Alto Livello. Inoltre è possibile far convivere nella stessa rappresentazione componenti descritti a livelli di astrazione e quindi di dettaglio diversi. Per questo motivo è possibile raffinare la descrizione solo di alcune parti del sistema mantenendo a grana grossa quella degli altri componenti.
+
+Il primo HDL è stato l'\emph{ISP} formalizzato da Gordon Bell e Alan Newell e descritto in \cite{ISP}. In questo linguaggio veniva per la prima volta introdotta la descrizione a livello RT (register transfert level). Infatti l'ISP era utilizzato per la descrizione del comportamento del computer PDP-8 che veniva modellizzato come un insieme di registri e un insieme di funzioni logiche che descrivevano il trasferimento dati tra di essi.
+
+In seguito nacquero diversi altri linguaggi di descrizione dello hardware: \emph{Vhsic HDL (VHDL)}, \emph{UDLI} sviluppato da NTT, \emph{HiLo}, da cui è stato derivato \emph{Verilog} e \emph{ISP'}, derivato di ISP.
+
+\subsubsection{VHDL}
+VHDL è stato sviluppato dal governo degli Stati Uniti d'America, all'interno del programma \emph{``Very High Speed Integrated Circuit (VHSIC)''} iniziato nel 1980.
+
+Questo linguaggio è stato creato con l'intenzione di soddisfare i bisogni che si riscontravano nel processo di progettazione. Le caratteristiche principali di questo linguaggio sono:
+\begin{itemize}
+\item la possibilità di rappresentare un sistema come composizione di sottosistemi più semplici e di descrivere come questi sottosistemi siano interconnessi fra loro;
+\item la possibilità di rappresentare il funzionamento del sistema utilizzando una forma di linguaggio di programmazione familiare;
+\item la possibilità di simulare il sistema progettato prima che venga effettivamente realizzato e confrontare così scelte progettuali diverse;
+\item la possibilità di sintetizzare i circuiti partendo sia dal livello comportamentale che da quello di porta logica.
+\end{itemize}
+
+\subsubsection{SystemC}
+La crescente domanda di sistemi on chip (SoC) e soprattutto l'aumentare della densità dei circuiti integrati hanno aperto nuove sfide nella loro progettazione. Infatti la funzionalità e quindi il sistema implementabile in un singolo circuito integrato è sempre più complesso ed è quindi necessario che i progettisti lavorino ad un livello di astrazione maggiore per poter mantenere la produttività richiesta. Un altro aspetto che sta influenzando negli ultimi anni la progettazione di sistemi dedicati è la necessità sempre più presente di integrare fortemente le componenti hardware e software del sistema. Sono quindi necessari nuovi approcci per la specifica, il partizionamento e la verifica del sistema. L'utilizzo di linguaggi diversi, linguaggi di specifica Hardware come Verilog o VHDL per la componente HW e linguaggi di programmazione come C o C++ per la componente SW rende comunque difficoltosa questa integrazione.
+
+Una possibile soluzione a questo problema fu individuata in una nuova piattaforma che fosse comune ai due rami di sviluppo di progetto (HW e SW) e che fosse basata su un linguaggio di specifica che consentisse il contemporaneo sviluppo e verifica delle funzionalità del sistema sia nelle sue componenti Hardware che in quelle Software. La scelta per tale linguaggio è caduta sul C++, opportunamente esteso, perchè solo questo linguaggio poteva garantire un adeguato livello di astrazione, assicurando al contempo una elevata integrazione tra parte hardware e parte software del sistema.
+
+L'estensione proposta ha preso il nome di SystemC: essa è stata sviluppata come un linguaggio standardizzato di specifica e di modellizzazione in grado di poter essere utilizzato per descrizioni a diversi livelli di astrazione e per descrivere sistemi contenenti sia parti hardware che parti software. SystemC è interamente basato su C++, ed il codice relativo al simulatore SystemC è scaricabile gratuitamente da \cite{SystemC} con licenza OCL. Lo standard viene gestito e controllato da un gruppo di tredici componenti in parte di provenienza industriale e in parte accademica.
+
+Fra le caratteristiche peculiari di SystemC si può ricordare:
+\begin{itemize}
+\item permette di descrivere il sistema anche ad un livello di astrazione maggiore rispetto a quello RT;
+\item permette di descrivere contemporaneamente componenti Hardware e Software;
+\item a livello RT i costrutti di modellazione forniti sono simili a quelli degli altri linguaggi di descrizione dello Hardware;
+\item offre costrutti per rappresentare facilmente numeri in virgola fissa;
+\item la concorrenza, similmente al VHDL, viene modellata attraverso l'uso di processi;
+\item introduce un insieme di funzionalità per una generica modellazione della comunicazione e della sincronizzazione.
+\end{itemize}
+
+I vantaggi offerti da questo linguaggio sono :
+\begin{itemize}
+\item la validazione del progetto può essere realizzata contemporaneamente sia per le componenti hardware che software;
+\item il testbench è unico e scritto in un linguaggio basato su C/C++ sia per lo hardware che per il software;
+\item le simulazioni possono essere fatte contemporaneamente su software e hardware e potendo essere fatte ad un livello di astrazione superiore all'RT sono generalmente più veloci.
+\end{itemize}
+La caratteristica comune di tutti i vantaggi è quella di poter operare a qualsiasi livello della sintesi di alto livello contemporaneamente su hardware e software.
+
+Ci sono anche degli svantaggi che più che tecnologici sono di natura umana; infatti fino all'introduzione del SystemC le progettazioni di componenti HW e SW costituivano due attività diverse e abbastanza scorrelate. Pertanto permangono tuttora delle difficoltà nell'integrare questi due ambienti e giungere così alla diffusione della figura del progettista HW/SW: i progettisti Hardware hanno scarsa conoscenza del C++, i progettisti software hanno scarsa conoscenza degli strumenti e dei problemi relativi alla progettazione Hardware.
+
+\subsection{Rappresentazioni intermedie}
+Le rappresentazioni intermedie sono quelle rappresentazioni utilizzate nelle diverse fasi della Sintesi ad Alto Livello. Ogni fase può utilizzare un tipo di rappresentazione diverso per velocizzare la sua computazione, mettere in risalto alcune caratteristiche del sistema o semplificare la scrittura dei risultati intermedi.
+
+La caratteristica che accomuna in generale i tipi di rappresentazione più usati è il fatto di essere costituiti da grafi orientati. In particolare i nodi di tali grafi solitamente rappresentano operazioni (o insieme di operazioni come nel caso degli ultimi due tipi di grafo che verranno a breve elencati) mentre gli archi rappresentano delle dipendenze di controllo o di dato fra di esse. Al fine della costruzione di alcune di queste rappresentazioni intermedie, in particolare di quelle che mostrano le dipendenze di controllo, sussiste una grande differenza fra le operazioni rappresentanti costrutti di controllo e operazioni rappresentanti computazioni. Invece, sempre al fine della costruzione dei grafi, distinguere fra i diversi tipi di operazioni computazionali non ha importanza, ma è comunque necessario memorizzarne le caratteristiche all'interno dei grafi stessi affinchè tali informazioni possano essere utilizzate dalle fasi della Sintesi al Alto Livello.
+
+Le rappresentazioni basate su grafi orientati che verranno descritte sono:
+
+\begin{itemize}
+\item \emph{Data Flow Graph} (DFG)
+\item \emph{Control Flow Graph} (CFG)
+\item \emph{Data Dependence Graph} (DDG)
+\item \emph{Control Dependence Graph} (CDG)
+\item \emph{System Dependence Graph} (SDG)
+\item \emph{Control Data Flow Graph} (CDFG)
+\item \emph{Grafo dei Blocchi Basici}
+\end{itemize}
+Fra queste rappresentazioni quelle che verrano utilizzate dall'implementazione dell'algoritmo realizzata sono il System Dependence Graph e il Grafo dei Blocchi Basici insieme ad un'ulteriore rappresentazione basata su grafi non orientati (l'albero dei dominatori) che verrà anch'essa successivamente descritta.
+
+\subsubsection{Data Flow Graph}
+Il Data Flow Graph (DFG) è un grafo in cui sono rappresentate le operazioni presenti in un sistema e le dipendenze dati esistenti tra di esse.
+
+Formalmente il DFG è un grafo orientato $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,n_{op}\}$ è l'insieme dei nodi del grafo, dove $n_{op}$ è il numero di operazioni, che si trovano in relazione uno a uno con le singole operazioni del sistema;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,n_{op}\}$ è l'insieme degli archi orientati del grafo: se esiste un arco tra $v_i$ e $v_j$ significa che esiste un trasferimento di dati tra l'i-esima operazione e la j-esima, ovvero che vi è una dipendenza di dato fra le due operazioni.
+\end{itemize}
+
+Nel modello DFG non vengono esplicitate le variabili necessarie alla memorizzazione dei dati trasferiti (a differenza del DDG - \ref{c:art:alto:graph:DDG}) fra i diversi nodi del grafo legati da dipendenza. Questo modello può inoltre venir utilizzato per la rappresentazione delle dipendenze dato fra sistemi composti da più processi per permettere una facile analisi e gestione del flusso di comunicazione fra di essi.
+
+\subsubsection{Control Flow Graph}
+Il Control Flow Graph (CFG) è un grafo in cui si rappresentano le operazioni in sequenza così come sono ordinate nella specifica evidenziando i possibili branch. Dal punto di vista formale il CFG è un grafo orientato e connesso $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,n_{op}\}$ è l'insieme dei nodi del grafo, dove $n_{op}$ è il numero di operazioni, che si trovano in relazione uno a uno con le singole operazioni del sistema;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,n_{op}\}$ è l'insieme degli archi orientati del grafo: esiste un arco tra $v_i$ e $v_j$ se 
+\begin{itemize}
+\item la j-esima operazione segue l'i-esima operazione nella specifica del sistema
+\item la j-esima operazione è una delle possibili destinazioni dell'i-esma operazione che è di branch, cioè un'operazione che può provocare la redirezione del flusso di controllo come cicli, salti, diramzioni, ecc. .
+\end{itemize}
+\end{itemize}
+
+Questa rappresentazione ha il vantaggio di essere facilmente estraibile dalla specifica iniziale, ma non evidenzia il massimo parallelismo estraibile dal sistema. E' inoltre non adatta a rappresentare sistemi multiprocesso in quanto nel grafo non è immediatamente evidenziabile quali possibili combinazioni fra i diversi percorsi relativi ai diversi processi possono essere contemporaneamente attivi, ne è possibile modellizzare facilmente sincronizzazioni o fork.
+
+\subsubsection{Data Dependence Graph}
+\label{c:art:alto:graph:DDG}
+Il Data Dependence Graph (DDG) è un grafo che similmente al DFG rappresenta le operazioni presenti in un sistema e le dipendenze dati esistenti tra di esse, ma a differenza del DFG evidenzia anche la variabile che è causa della dipendenza.
+
+Formalmente il DDG è un grafo orientato $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,n_{op}\}$ è l'insieme dei nodi del grafo, dove $n_{op}$ è il numero di operazioni, che si trovano in relazione uno a uno con le singole operazioni del sistema;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,n_{op}\}$ è l'insieme degli archi orientati del grafo: se esiste un arco tra $v_i$ e $v_j$ etichettato $x_k$ devono verificarsi queste condizioni;
+\begin{itemize}
+\item l'operazione $v_i$ contiene una definizione di $x_k$;
+\item l'operazione $v_j$ contiene un uso di $x_k$;
+\item esiste un percorso $p$, cioè una possibile traccia di esecuzione, fra le operazioni $v_i$ e $v_j$ le cui operazioni non contengano definizioni di $x_k$.
+\end{itemize}
+\end{itemize}
+
+\subsubsection{Control Dependence Graph}
+Il CDG è un grafo che rappresenta le operazioni presenti in un sistema e le dipendenze di controllo fra di esse. Un'operazione $x_j$ ha una dipendenza di controllo da $x_i$ se $x_i$ è un'operazione di branch e a seconda della direzione del salto intrapreso l'operazione $x_j$ può essere eseguita o meno.
+
+Formalmente il CDG è un grafo orientato $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,n_{op}\}$ è l'insieme dei nodi del grafo, dove $n_{op}$ è il numero di operazioni, che si trovano in relazione uno a uno con le singole operazioni del sistema;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,n_{op}\}$ è l'insieme degli archi orientati del grafo: esiste un arco tra $v_i$ e $v_j$ se si verificano entrambe queste condizioni:
+\begin{itemize}
+\item esiste un percorso $p$ da $v_i$ a $v_j$, tale che $v_j$ post-domina ogni nodo strettamente compreso tra $v_i$ e $v_j$ lungo il percorso $p$;
+\item $v_j$ non post-domina il nodo $v_i$.
+\end{itemize}
+\end{itemize}
+
+La definizione di post-dominanza è la seguente: un nodo $v_i$ post-domina $v_j$ se $v_i$ è diverso da $v_j$ e $v_i$ fa parte di ogni percorso del CFG fra $v_j$ e l'uscita.
+
+\subsubsection{System Dependence Graph} 
+La rappresentazione SDG è il risultato della fusione di due rappresentazioni intermedie:  il CDG e il DDG.
+
+Formalmente il SDG è un grafo orientato $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,n_{op}\}$ è l'insieme dei nodi del grafo, dove $n_{op}$ è il numero di operazioni, che si trovano in relazione uno a uno con le singole operazioni del sistema e quindi in corrispondenza uno a uno con i nodi del CDG e i nodi del DDG;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,n_{op}\}$ è l'insieme degli archi orientati del grafo: esiste un arco tra $v_i$ e $v_j$ se si verifica una di queste condizioni:
+\begin{itemize}
+\item esiste un arco tra $v_i$ e $v_j$ nel CDG;
+\item esiste un arco tra $v_i$ e $v_j$ nel DDG.
+\end{itemize}
+\end{itemize}
+Questa rappresentazione è quella più utile per gli algoritmi di scheduling perchè permette di considerare contemporaneamente sia le dipendenze dato, sia le dipendenze di controllo e non preordina le operazioni secondo la sequenza in cui si trovano della descrizione della specifica.
+
+\subsubsection{Control Data Flow Graph}
+\label{c:art:alto:inter:CDFG}
+A differenza delle rappresentazioni precedenti in questo tipo di grafo non vi è una corrispondenza biunivoca con le operazioni della descrizione del sistema.
+Le sequenze massime di operazioni che non contengano al loro interno operazioni di salto condizionato ne contengono operazioni destinazione di salti condizionati (ad eccezione della prima operazione della sequenza) vengono raggruppate fra di loro e fatte corrispondere ad un nodo nel grafo. Più precisamente si fa corrispondere ad un nodo del CDFG non il mero elenco delle operazioni, ma il DFG parziale che descrive le relazioni di dipendenza dato fra di esse. Le operazioni che non fanno parte di alcune sequenza come per esempio le operazioni di salto condizionato vengono anch'esse fatte corrispondere ad un nodo del grafo.
+
+Formalmente il CDFG è un grafo orientato $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,n\}$ è l'insieme dei nodi del grafo costruito come indicato;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,n_{op}\}$ è l'insieme degli archi orientati del grafo: esiste un arco tra $v_i$ e $v_j$ se 
+\begin{itemize}
+\item la prima operazione del j-esimo nodo segue una delle operazioni \mbox{dell'i-esimo} nodo nella specifica del sistema;
+\item una qualche operazione del j-esimo nodo è una delle possibili destinazioni dell'operazione di salto condizionato corrispondente \mbox{all'i-esimo} nodo.
+\end{itemize}
+\end{itemize}
+
+Nella sua struttura il CDFG è quindi simile al CFG con la differenza che le catene di operazioni di quest ultimo vengono inserite all'interno di un DFG parziale che costituirà un nodo singolo nel CDFG.
+
+\subsubsection{Grafo dei Blocchi Basici}
+Un blocco basico, così come definito in \cite{appel}, è una sequenza di operazioni che gode delle seguenti proprietà:
+\begin{itemize}
+\item la prima operazione è una destinazione di un salto;
+\item l'ultima operazione è un salto;
+\item non vi sono altre operazioni di salto o destinazione di essi (operazioni etichettate) all'interno della sequenza.
+\end{itemize}
+Pertanto se un'operazione di un blocco basico viene eseguita in una certa traccia, tutte le operazioni di quel blocco basico verranno eseguite in quella traccia. I blocchi basici di una descrizione di sistema possono a loro volta costituire i nodi di un grafo; tale grafo è molto simile al CDFG ad eccezione che, se un'operazione di salto ha un unico nodo cioè un unico blocco basico come predecessore diretto allora ad esso verrà assegnata e che le operazioni appartenenti ad un unico nodo non vengono descritte da un DFG parziale ma semplicemente elencate all'interno del nodo stesso così come compaiono nella specifica.
+
+Formalmente il grafo dei Blocchi Basici è un grafo orientato $G_d(V,E)$ dove:
+\begin{itemize}
+\item[] $V=\{v_i; i=1,2,...,b\}$ è l'insieme dei nodi che si trovano in relazione uno a uno con i blocchi basici;
+\item[] $E=\{(v_i,v_j);i,j=1,2,...,b\}$ è l'insieme degli archi orientati del grafo: esiste un arco tra $v_i$ e $v_j$ se:
+\begin{itemize}
+\item la prima operazione del j-esimo blocco basico segue l'ultima operazione dell'i-esimo blocco basico;
+\item la prima operazione del j-esimo blocco basico è una delle possibili destinazioni del salto con cui termina l'i-esimo blocco basico.
+\end{itemize}
+\end{itemize}
+
+\subsubsection{Albero dei Dominatori}
+A differenza delle precedenti rappresentazioni, l'Albero dei Dominatori come dice il nome stesso non è un grafo orientato bensì un albero ed in particolare costituisce un'elaborazione del grafo dei Blocchi Basici.
+
+Un blocco basico $B_i$ domina un blocco basico $B_j$ se ogni percorso nel grafo dei blocchi basici fra il blocco di ingresso e $B_j$ passa da $B_i$. Un blocco basico può avere quindi più dominatori. La relazione di dominanza viene estesa includendo le seguenti dominanze:
+\begin{itemize}
+\item il blocco di ingresso domina tutti i nodi del grafo;
+\item ogni blocco domina se stesso.
+\end{itemize}
+
+Dalla relazione di dominanza si ricava la relazione di dominanza immediata, più utile per analizzare le caratteristiche di un sistema: un blocco basico $B_i$ domina direttamente $B_j$ se:
+\begin{itemize}
+\item $B_i$ domina $B_j$;
+\item non esiste un $B_k$ tali che $B_i$ domina $B_k$ e $B_k$ domina $B_j$.
+\end{itemize}
+
+A differenza della relazione di dominanza semplice, ogni blocco basico ha un unico dominatore immediato. A partire dalla dominanza diretta viene costruito l'albero dei dominatori: la radice dell'albero è il blocco basico iniziale; i figli della radice sono i blocchi basici dominati direttamente dal blocco basico iniziale; i figli di un nodo qualsiasi sono i blocchi basici dominati direttamente dal blocco basico corrispondente a quel nodo.
+
+\section{Il problema dello scheduling}
+\label{c:art:sch}
+Il problema dello scheduling consiste nell'assegnamento delle operazioni che compongono il sistema ad uno specifico passo di controllo, cercando di minimizzare una prefissata funzione obiettivo e rispettando nel contempo un'insieme di vincoli. Funzione obiettivo e vincoli possono riguardare il tempo (numero di passi di controllo o ritardo del sistema) o la tecnologia (numero di unità funzionali o potenza dissipata).
+
+Nell'ipotesi semplificatrice che tutte le operazioni abbiano tempo di esecuzione uguale (per soddisfare questa ipotesi è sufficiente considerare il tempo di esecuzione di ogni operazione pari al tempo di quella più lenta) e posta la durata di un passo di controllo pari a tale tempo, un'operazione può essere assegnata solo in un passo di controllo successivo a tutti quelli ai quali sono stati assegnati i suoi predecessori e precedente a quelli nei quali sono stati assegnati i suoi successori.
+
+L'ipotesi appena fatta è tuttavia troppo conservativa e rischia di essere troppo penalizzante nel processo di minimizzazione del tempo di esecuzione della funzionalità: il tempo di clock ricavato potrebbe risultare infatti troppo lungo. E' quindi necessario considerare la possibilità che il ritardo introdotto nell'esecuzione delle singole operazioni possa essere diverso. Gli approcci a questa nuova problematica sono sostanzialmente quattro:
+\begin{itemize}
+\item Multicycling
+
+In questo caso la durata del passo di controllo viene dimensionata sull'operazione più veloce; l'esecuzione delle operazioni più lunghe richiedrà più di un ciclo di controllo (per questo motivo vengono definite operazioni multiciclo). Poichè i dati in ingresso dell'operazione multiciclo potrebbero essere sovrascritti dopo il primo ciclo di clock dall'inizio della sua esecuzione, è necessario introdurre dei latch all'ingresso dell'unità funzionale che la esegue affinchè i dati vengano tenuti memorizzati. Questo approccio ha tuttavia il difetto di aumentare il numero di passi di controllo richiesti e conseguentemente la complessità dell'unità di controllo.
+
+\item Chaining
+
+Il tempo di clock viene mantenuto uguale a quello dell'operazione più lenta, tuttavia si consente di eseguire due o più operazioni in serie nello stesso passo di controllo. Sostanzialmente si permette di assegnare un'operazione allo stesso ciclo al quale è assegnato l'ultimo dei suoi predecessori purchè la somma dei tempi di esecuzione delle operazioni che costituiscono la serie (operazioni concatenate) sia inferiore al periodo di clock. Tale approccio ha lo svantaggio di richiedere collegamenti diretti fra le diverse unità funzionali oltre a quelli già presenti fra registri ed unità.
+
+\item Multicycling + Chaining
+
+Il periodo di clock viene posto uguale ad un valore medio dei tempi di esecuzione delle operazioni o al tempo di esecuzione più diffuso fra le diverse operazioni. Le operazioni con tempo di esecuzione maggiore del periodo di clock verranno considerate come multiciclo e si permetterà di fare chaining fra quelle con tempo di esecuzione minore della durata di un passo di controllo.
+
+\item Pipeline
+
+Questo approccio è complementare a quelli fin qui presentati e richiede la presenza di unità funzionali apposite (unità dotate di pipeline). Le operazioni che possono essere eseguite da questo tipo di unità sono considerate al pari delle operazioni multiciclo, ma l'unità funzionale che le esegue viene considerata disponibile a partire dal passo di controllo successivo a quello in cui un'operazione le è stata assegnata.
+
+\end{itemize}
+
+
+Sommariamente gli algoritmi possono suddividersi in due categorie: quelli che cercano di minimizzare una metrica riguardante le temporizzazioni e quelli che cercano di minimizzare una metrica riguardante la tecnologia.
+
+\subsection{Algortimi che minimizzano metriche temporali}
+\label{c:art:sch:time}
+All'interno degli algoritmi che hanno come obiettivo quello di minimizzare il tempo di esecuzione (quantità che può essere espressa in modi diversi come per esempio ritardo introdotto dal sistema o numero di passi di controllo) si possono individuare due ulteriori sottocategorie:
+\begin{itemize}
+\item algoritmi non vincolati: ASAP, ALAP, Path-Based;
+\item algoritmi con vincoli sulle risorse: List-Based, Static-List.
+
+Questi algoritmi garantiscono di rispettare i vincoli sulle risorse che si concretizzano in un numero fissato di risorse allocate: a meno della presenza di istruzioni in mutua esclusione introdotta dall'esistenza di costrutti condizionali nel problema, non è possibile schedulare più operazioni di un certo tipo rispetto al numero di unità funzionali allocate che possono eseguire quelle operazioni.
+\end{itemize}
+
+\subsubsection{ASAP}
+\label{c:art:sch:time:ASAP}
+Insieme all'ALAP è uno degli algoritmi più semplici: assegna ogni operazione al primo passo di controllo in cui questa può essere eseguita rispettando le dipendenze di dato e di controllo presenti nel CDFG. Ogni operazione viene schedulata appena è possibile (\emph{As Soon As Possible}) come descritto in \cite{ASAP1} e \cite{ASAP2}: 
+\begin{enumerate}
+\item si schedulano tutte le operazioni senza predecessori nel primo passo di controllo;
+\item finchè vi sono operazioni ancora da schedulare si ripete:
+\begin{enumerate}
+\item si incrementa di uno il numero di passi di controllo totale;
+\item si schedula nel passo di controllo appena creato una operazione se i suoi predecessori sono già tutti stati schedulati in passi di controllo precedenti;
+\end{enumerate}
+\end{enumerate}
+La soluzione trovata è ottima: non esiste uno scheduling possibile che utilizzi un numero di passi di controllo inferiore a quello calcolato dall'ASAP.
+
+\subsubsection{ALAP}
+\label{c:art:sch:time:ALAP}
+E' il duale dell'ASAP: assegna ogni operazione all'ultimo passo di controllo in cui questa può essere eseguita rispettando le dipendenze di dato e di controllo presenti nel CDFG. Ogni operazione viene schedulata il più tardi possibile (\emph{As Late As Possible}): 
+\begin{enumerate}
+\item si schedulano tutte le operazioni senza successori nell'ultimo passo di controllo;
+\item finchè vi sono operazioni ancora da schedulare si ripete:
+\begin{enumerate}
+\item si decrementa di uno l'indice del passo di controllo corrente;
+\item si schedula nel passo di controllo corrente una operazione se i suoi successori sono già tutti stati schedulati in passi di controllo successivi.
+\end{enumerate}
+\end{enumerate}
+La soluzione trovata è ottima: non esiste uno scheduling possibile che utilizzi un numero di passi di controllo inferiore a quello calcolato dall'ALAP e tale numero coincide ovviamente con quello calcolato dall'ASAP.
+
+Relativamente ad una singola operazione, i passi di controllo compresi fra quello indicato dall'ASAP per quella operazione e quello indicato dall'ALAP prendono il nome di \emph{finestra temporale} dell'operazione; il numero di tali passi di controllo, compresi gli estremi cioè quelli indicati da ASAP e ALAP prende il nome di mobilità dell'operazione.
+
+\subsubsection{Path--Based}
+Il \emph{Path-Based scheduling} (\cite{path1} \cite{path2} e \cite{path3}) minimizza il numero di passi di controllo necessari ad eseguire il percorso critico all'interno del CDFG. Il modo in cui procede l'algoritmo è il seguente: tutti i possibili percorsi di esecuzione sono estratti dal CDFG e sono schedulati indipendentemente l'uno dall'altro. Successivamente lo scheduling dei singoli percorsi viene combinato per generare la soluzione finale.
+
+L'algoritmo genera dei vincoli tra nodi che vengono schedulati in passi di controllo differenti: Il problema di introdurre i vincoli relativi alla minimizzazione dei passi di controllo viene cioè trasformato in un problema di partizionamento di ``clique'' o di sottografi completamente connessi. In questo nuovo problema i nodi rappresentano i vincoli sugli intervalli mentre gli archi rappresentano i vincoli sulla sovrapposizione di intervalli. Una soluzione a questo partizionamento considererà la minima sovrapposizione di intervalli in un dato percorso. Gli intervalli dei differenti percorsi saranno poi combinati usando la stessa tecnica per ottenere un nuovo CDFG. L'introduzione di nuovi passi di controllo al CDFG finale produrrà infine una unica soluzione finale.
+
+\subsubsection{List Based}
+\label{c:art:sch:time:lb}
+Come descritto in \cite{lb}, il \emph{List Based scheduling} fornisce una generalizzazione dell'algoritmo ASAP includendo vincoli sul numero delle risorse disponibili. Il funzionamento prevede che ad ogni passo di controllo:
+\begin{enumerate}
+\item si identifichino i nodi pronti ossia quei nodi i cui predecessori sono già stati schedulati;
+\item si creino per ogni tipo di unità funzionale una lista di operazioni pronte che possano da esse essere eseguite; le liste devono essere ordinate in base ad una funzione di priorità;
+\item per ogni lista di operazioni si schedulano le operazioni in ordine di priorità finche la lista è vuota o finchè non vi sono più unità funzionali di quel tipo disponibili; se vi sono più operazioni in lista rispetto al numero di unità funzionali si differisce lo scheduling di quelle con priorità minore.
+\end{enumerate}
+
+Una possibile funzione di priorità può essere basata sulla mobilità delle operazioni (differenza fra ALAP e ASAP delle operazioni incrementata di un'unità): si può assegnare una priorità che è inversamente proporzionale alla mobilità. In questo modo in uno specifico passo di controllo i nodi con mobilità più bassa saranno quelli che avranno maggiore possibilità di essere schedulati anticipatamente. Una ridotta mobilità infatti implica che l'operazione possa essere schedulata in solo pochi passi di controllo. Un'altra possibile funzione di priorità è l'appartenenza o meno ad uno dei percorsi critici del CDFG.
+
+I risultati dell'algoritmo dipendono fortemente dalla funzione di priorità scelta. La complessità temporale e spaziale per questa tipologia di algoritmo è abbastanza elevata, dal momento che è necessario mantenere dinamicamente un elevato numero di liste di priorità. 
+
+\subsubsection{Static List}
+Questo algoritmo (proposto in \cite{static}) è simile al List-Based, ma utilizza un'unica lista di priorità creata all'inizio dello scheduling che non viene aggiornata dinamicamente. La base per il calcolo della priorità delle operazioni sono anche in questo caso i risultati forniti da ASAP e ALAP: le operazioni vengono ordinate secondo due chiavi diverse: la prima chiave di ordinamento è il passo di controllo assegnato dall'ALAP; la seconda chiave di ordinamento, che viene utilizzata per operazioni che hanno lo stesso ALAP, è il passo di controllo dell'ASAP. Per entrambe le chiavi si utilizza l'ordinamento decrescente; in caso di nodi con entrambe le chiavi uguali l'ordinamento è arbitrario. Si è così ottenuto un assegnamento assoluto di tutte le operazioni. A questo punto sulla base della posizione che le operazioni hanno nella lista si assegna loro una priorità: i nodi che appartengono all'inizio della lista saranno quelli a minore priorità, i nodi che appartengono alla coda saranno quelli a maggiore priorità.
+
+Una volta stabilita la priorità delle operazioni è possibile eseguire lo scheduling: ad ogni passo di controllo si cerca di schedulare le operazioni a maggiore priorità purchè esistano unità funzionali libere capace di eseguirle e vengano rispettate le dipendenze. Qualora un'operazione non possa essere schedulata, il suo scheduling verrà posticipato. A differenza del List Based, la lista non viene aggiornata ad ogni iterazione (proprio da questo deriva l'aggettivo static). Il maggior vantaggio dell'algoritmo consiste proprio nel mancato aggiornamento in quanto in questo modo a differenza del List-Based è necessario costruire una lista di priorità delle operazioni un'unica volta.
+
+\subsection{Algortimi che minimizzano metriche architetturali}
+\label{c:art:sch:func}
+Gli algoritmi che hanno come obiettivo quello di minimizzare metriche riguardanti l'architettura (area occupata, potenza dissipata, numero di unità funzionali) sono caratterizzati dal dover avere il numero di passi di controllo fissato (ciò è fatto implicitamente nel caso del Simulated Annealing); questa caratteristica li rende molto importanti nella progettazione di sistemi real-time caratterizzati soprattutto dalla presenza di  vincoli temporali e dalla necessità di ridurre aspetti come l'area o la potenza dissipata. Alcuni di questi algoritmi sono stati pensati per minimizzare solo una specifica metrica architetturale (per esempio il numero di unità funzionali), tuttavia poichè vi è forte dipendenza fra le diverse metriche è facile estenderli per ottenere l'ottimizzazione anche di altre metriche da essa dipendenti. Esistono diversi approcci a questa classe di problemi:
+\begin{itemize}
+\item Matematico: Programmazione Lineare Intera (ILP);
+\item Stocastico: Simulated Annealing;
+\item Euristico: Force Directed;
+\item Raffinamento Iterativo: Rescheduling Iterativo.
+\end{itemize}
+
+\subsubsection{Programmazione Lineare Intera}
+Il metodo della Programmazione Lineare Intera (ILP) (\cite{ilp}) trova una soluzione ottima al problema della minimizzazione dei costi delle risorse attraverso una ricerca branch-and-bound che utilizza ``backtracking'' (\ref{c:art:back}).
+Siano $S_{Ek}$ e $S_{Lk}$ i passi di controllo a cui è assegnata la k-esima operazione dagli algoritmi ASAP e ALAP. In uno scheduling che rispetti tutte le dipendenze l'operazione k non può essere schedulata prima di $S_{Ek}$ e dopo $S_{Lk}$. Da questo, come è già stato mostrato, si ricava il valore della finestra temporale di una operazione che per definizione è pari a \[M = \{S_{j} | E_k \leq j \leq L_k\},\] Dalla finestra temporale di un'operazione 	si ricava facilmente  la sua mobilità che è il numero di passi di controllo compresi tra $S_{Ek}$ e $S_{Lk}$ estremi inclusi.
+La notazione usata per questo tipo di formulazione prevede l'introduzione e la definizione delle seguenti quantità:
+\begin{description}
+\item[$OP=\{O_i | 1 \leq i \leq n\}$] insieme delle operazioni;
+\item[$t_i=$] tipo dell'i-esima operazione;
+\item[$T=\{t_k | 1 \leq k \leq m\}$] insieme dei possibili tipi;
+\item[$OP_{tk}$] operazioni in OP di tipo $t_k$;
+\item[$INDEX_{tk}$] insieme degli indici di operazioni in $OP_{tk}$;
+\item[$N_{tk}$] numero di unità che compiono operazioni di tipo $t_k$;
+\item[$C_{tk}$] costo di tali unità;
+\item[$S=\{s_j | 1 \leq j \leq r\}$] insieme di passi di controllo disponibili per lo scheduling delle operazioni;
+\item[$x_{ij}$] variabili logiche che indicano l'assegnamento di un'operazione $i$ ad un passo di controllo $j$: 1 in caso di assegnamento, 0 in caso contrario
+ \end{description}
+Il problema dello scheduling può quindi essere formulato come:
+\[minimizza (\Sigma_{k=1}^{m}(C_{tk} * N_{tk}))\]
+con i vincoli:
+\begin{itemize}
+\item un'operazione può essere schedulata in un unico passo di controllo e questo passo di controllo deve far parte della sua finestra temporale
+
+\[\forall i, 1 \leq i \leq n, (\Sigma_{E_j \leq j \leq L_j} x_{ij}=1);\]
+
+\item il numero di operazioni di tipo $t_k$ schedulate in un passo di controllo non può essere maggiore del numero di unità funzionali che possono eseguire operazioni di tipo $t_k$ (nel caso non esistano operazioni in mutua esclusione a causa della presenza di costrutti di controllo)
+
+\[\forall j, 1 \leq j \leq r, \forall k, 1 \leq k \leq m, (\Sigma_{j \in INDEX_{tk}} x_{ij} \leq N_{tk});\]
+
+\item un'operazione non può essere schedulata prima dei successori
+
+\[\forall i,j,o_i \in Pred_{o_j}(\Sigma_{E_i \leq k \leq L_i}(k \cdot x_{ik})- \Sigma_{E_j \leq l \leq L_j}(l \cdot x_{jl})\leq -1).\]
+\end{itemize}
+L'algoritmo ha complessità elevata e quindi il tempo di esecuzione cresce molto rapidamente al crescere del numero di variabili utilizzate. Non è quindi utilizzabile direttamente in casi che non siano molto semplici: ne sono state pertanto realizzate versioni modificate che non fanno uso di backtracking, ma utilizzando tecniche euristiche assegnano un'operazione alla volta invece di tentare di trovare una soluzione completa.
+
+\subsubsection{Simulated Annealing}
+L'algoritmo \emph{Simulated Annealing} è descritto in \cite{path1}. Il problema dello scheduling in questo caso viene rappresentato attraverso una tabella in cui le righe raffigurano i passi di controllo, mentre le colonne rappresentano le unità funzionali disponibili: il problema è quindi quello di posizionare le operazioni all'interno di questa tabella, imponendo il vincolo legato al fatto che in un passo di controllo una risorsa può essere utilizzata per un'unica operazione. Ogni cella conterrà quindi una sola operazione (considerando solo problemi senza costrutti condizionali).
+
+L'algoritmo parte da una soluzione iniziale che deve essere precalcolata e per successive iterazioni effettua delle modifiche allo scheduling iniziale. Ad ogni iterazione viene valutata la bontà di questa modifica, che può essere accettata con una certa probabilità dipendente dal guadagno ottenuto relativamente alla funzione obiettivo. La funzione obiettivo tipicamente riguarda aspetti architetturali del sistema. Anche in caso di peggioramento delle prestazioni o della funzione obiettivo è possibile, seppur ovviamente con probabilità minore, che la nuova soluzione venga accettata. L'accettare anche soluzioni peggiorative permette di uscire dai minimi locali della funzione obiettivo garantendo in tal modo una più esaustiva esplorazione dello spazio delle soluzioni.
+
+Per tale motivo questo algoritmo può essere considerato particolarmente robusto, anche se tale robustezza si ripercuote in termini di tempi di esecuzione.
+
+\subsubsection{Force Directed}
+Il \emph{Force Directed} scheduling (\cite{fd1} e \cite{fd2}) è l'algoritmo di cui si propone un'estensione in questo lavoro di tesi, quindi verrà descritto accuratamente nel capitolo \ref{c:ori}. Se ne dà qui per completezza del confronto con gli altri algoritmi presentati una breve descrizione.
+
+Il Force Directed è un metodo euristico con l'obiettivo di minimizzare il numero totale di unità funzionali utilizzate fissato il numero di passi di controllo. Per minimizzre questo valore l'algoritmo cerca di distribuire uniformemente le operazioni di uno stesso tipo nei diversi passi di controllo. Come gli  algoritmi precedenti necessita delle informazioni fornite da ASAP e ALAP.
+
+La soluzione dell'algoritmo non è ottima a causa di alcune approssimazioni che vengono fatte durante la sua esecuzione sugli effetti prodotti dai singoli assegnamenti.
+
+\subsubsection{Rescheduling Iterativo}
+Il metodo del \emph{Rescheduling Iterativo (IR)} (\cite{iter}) si basa sul problema della bisezione di grafi (proposto da Kernighan e Lin in \cite{part}) e procede similmente al Simulated Annealing reschedulando singolarmente le operazioni e  necessita quindi di una soluzione ammissibile già esistente. Tale soluzione viene modificata in questo modo: si sceglie un'operazione casualmente, la si sposta in un altro passo di controllo e la si blocca; si ripete ciò finchè tutte le operazioni sono bloccate. Dopo ogni modifica si valuta il guadagno che questa comporta: la sequenza di spostamenti che produce il miglior guadagno viene effettivamente applicata allo scheduling ottenendo una nuova soluzione. A partire da questa soluzione si riapplica una nuova iterazione dell'algoritmo finchè non si giunge ad una soluzione accettabile.
+
+La bontà dei risultati dipende fortemente dalla soluzione iniziale utilizzata; esistono delle varianti che si possono introdurre per ovviare a questa limitazione rendendo meno critica la scelta della soluzione iniziale e migliorando la qualità media dei risultati; i miglioramenti che possono essere apportati sono:
+\begin{itemize}
+\item utilizzare diverse configurazioni iniziali: l'algoritmo è computazionalmente efficiente e quindi può essere applicato più volte;
+\item utilizzare una migliore strategia di previsione degli effetti.
+\end{itemize}
+
+\section{La tecnica del Backtracking}
+\label{c:art:back}
+Il \emph{Backtracking} è una tecnica di tipo costruttivo utilizzata nel risolvere problemi caratterizzati dall'esistenza di vincoli da soddisfare. Il termine \emph{backtrack} fu coniato dal matematico americano D. H. Lehmer nel  1950, ma la prima generale esposizione di questa tecnica è dovuta a Walker (\cite{back1}) e fra i primi studi generali si possono ricordare \cite{back2} e \cite{back3}. I problemi che questa tecnica può risolvere sono modellizzabili solitamente come la scelta di quale valore assegnare ad una serie di variabili. Una possibile rappresentazione di questo modello sono gli alberi di ricerca: ai nodi intermedi corrispondono soluzioni intermedie, alle foglie le soluzioni complete, agli archi le possibili scelte di assegnamento di una variabile e quindi i passi che contribuiscono a costruire la soluzione finale.
+
+La ricerca della soluzione può essere modellizzata come una visita \mbox{deptu-first} dell'albero di ricerca (una volta giunti in un nodo la visita procedeh nel primo dei suoi figli; solo nel caso tutti i figli di un nodo siano già stati visitati si passa alla visita dei suoi fratelli). Per ottenere la soluzione ottima, cioè la soluzione in cui il valore di una certa funzione obiettivo è minimo, è necessario esplorare l'intero albero.
+
+La tecnica appena descritta impone quindi di analizzare tutte le soluzioni possibili per individuare quella ottima. Per limitare il numero di soluzioni da esaminare è possibile utilizzare il metodo del \emph{Branch and Bound}; questo consiste nel calcolare il soddisfacimento dei vincoli e il valore della funzione obiettivo non solo per le foglie, ma per tutti i nodi dell'albero e tagliare i sottoalberi che offrono soluzioni sicuramente peggiori di quella trovata fino a quel momento.  Si supponga per esempio che i contributi dei singoli assegnamenti alla funzione obiettivo siano tutti non negativi: se in un nodo il valore della funzione obiettivo è più grande di quello della miglior soluzione trovata, tutte quelle corrispondenti alle foglie appartenenti al sottoalbero avente origine in quel nodo avranno un valore della funzione obiettivo peggiore della soluzione temporanea e pertanto potranno essere ignorate, riducendo quindi il numero di soluzioni da considerare.
+
+Il backtracking ha complessità esponenziale quindi è poco efficiente per risolvere problemi che non siano NP-completi; è possibile tuttavia integrare al suo interno euristiche, come quella appena presentata del Branch and Bound, che, pur non riducendo la complessità del caso pessimo, possono ridurre il tempo di esecuzione medio.
+
+\subsection{Tecniche di Look-Ahead}
+\label{c:art:back:la}
+Le tecniche di Look-Ahead sono tecniche che estendono ed integrano quella del Backtracking consentendo di ridurre il numero di nodi da visitare dell'albero sia nel caso l'obiettivo sia individuare una soluzione valida, sia nel caso si voglia trovare una soluzione il cui valore della funzione obiettivo sia soddisfacente. Nella versione classica del Backtracking la scelta del prossimo arco e quindi del prossimo assegnamento a partire da un certo nodo è casuale o determinata dall'ordinamento lessicografico degli assegnamenti stessi.
+
+L'idea alla base del Look-Ahead è quella di stimare gli effetti dovuti al prossimo assegnamento prima di scegliere quale arco percorrere. In questo modo è possibile escludere assegnamenti che provocherebbero una violazione dei vincoli del problema e cercare di percorrere anticipatamente il ramo che porta ad una soluzione se non ottima almeno accettabile secondo dei criteri prefissati.
+
+E' possibile estendere l'orizzonte visivo di questa tecnica a più passi cioè cercare di stimare la qualità delle soluzioni parziali costruite a partire da quella attuale aggiungendo non uno ma più assegnamenti. Il risultato è di ridurre il numero medio di backtracking necessari (nel caso si voglia individuare una soluzione ammissibile) oppure di ottenere una soluzione mediamente migliore (nel caso si stia cercando di minimizzare una certa metrica senza comunque voler ottenere la soluzione ottima) a prezzo di una crescita del tempo di computazione medio dovuta all'overhead necessario per calcolare le stime delle soluzioni parziali.

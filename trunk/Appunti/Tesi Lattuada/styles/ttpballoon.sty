@@ -1,0 +1,146 @@
+% -*- LaTeX -*-
+
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+\ProvidesPackage{ttpshape}
+\RequirePackage[metapost]{mfpic}
+
+\opengraphsfile{\jobname -ttp}
+
+% Define the theme's colors for MFpic and LaTeX.
+
+\mfpdefinecolor{light_blue}{RGB}{140,140,240}
+\mfpdefinecolor{dark_blue}{RGB}{80,80,148}
+\mfpdefinecolor{blu}{RGB}{0,0,100}
+\definecolor{darkblue}{RGB}{0,0,100}
+\definecolor{darkgrey}{RGB}{90,90,90}
+
+% Draw the MFpic pictures and save them into registers.
+
+\gdef\ttp@balloon{
+  % Common definitions.
+  vardef rightdir(text $) = up rotated (-$) enddef;
+  %
+  % Parametric definitions.
+  numeric ang; ang = 20;
+  numeric b; b = 0.07;
+  %
+  % Define (half of) the central lobe.
+  x1 = 0;
+  x4 = 0;
+  x5*2 = x2r-x2l;
+  %
+  % Define the lateral lobe.
+  % Align the top of the lobe with the line going out of the central lobe.
+  z3r = whatever * rightdir (ang);
+  %
+  % Align the rightmost point with that of the lateral lobe (z5), and with
+  % the right of the (unrotated) bounding box.
+  z2r = (h/2, y5);
+  %
+  % Leave equal space between the left curve of the lateral lobe and
+  % the other two.
+  z2l = .5[z5,z2r];
+  z3l = .5[z5,z3r];
+  %
+  % Heights are defined relative to the topmost point of the lobe, y3r.
+  y1  = 0;
+  y3r = h   / (1+b);
+  y4  = y3r / (1+0.5b);
+  y5  = y4  / (1+2b);
+  %
+  path l[], r[];
+  %
+  r1 = z1 {rightdir(3ang)} .. z2r {up} .. z3r {left} .. z4  -- 
+       z4 {right}          .. z3l      .. z2l {down} .. z1 {-rightdir(2ang)} --
+       cycle;
+  %
+  r2 = z4 {right}          .. z3l      .. z2l {down} .. z1 {-rightdir(2ang)} --
+       z1 {rightdir(ang)}  .. z5 {up}  .. z4 {left} -- cycle;
+  %
+  r3 = z1 {rightdir(ang)}  .. z5 {up}  .. z4 {left} -- cycle;
+  %
+  l1 = r1 xscaled (-1);
+  l2 = r2 xscaled (-1);
+  l3 = r3 xscaled (-1);
+  %
+  transform t;
+  t = identity rotated 1.5ang shifted (0.84*h, 0);
+  filldraw r1 transformed t withcolor 1[light_blue, dark_blue];
+  filldraw r2 transformed t withcolor 0.75[light_blue, dark_blue];
+  filldraw r3 transformed t withcolor 0.5[light_blue, dark_blue];
+  filldraw l3 transformed t withcolor 0.5[light_blue, dark_blue];
+  filldraw l2 transformed t withcolor 0.25[light_blue, dark_blue];
+  filldraw l1 transformed t withcolor 0[light_blue, dark_blue];
+}  
+%\gdef\ttp@balloon{}
+
+\AtBeginDocument{
+  \newsavepic{\ttp@headerpic}
+  \savepic{\ttp@headerpic}
+  \begin{mfpic}[13.4][13.4]{3}{56}{0}{6}
+    \fillcolor{blu}\gfill\polygon{(8.5,1.8),(40,1.8),(39.8,1.6),(8.5,1.6)}
+    \fillcolor{blu}\gfill\polygon{(8.5,1.4),(39.6,1.4),(39.5,1.3),(8.5,1.3)}
+    \mfsrc{\ttp@balloon}
+  \end{mfpic}
+}
+\AtEndDocument{
+  \closegraphsfile
+}
+
+% A couple of helper macros to put labels
+% A label displaying #3 top aligned at (#1, #2)
+\newcommand{\ttp@topalign}[3]{%
+  \vbox to 0pt{%
+    \vskip #2%
+    \hskip #1 \strut #3%
+    \vss%
+  }%
+}
+
+% A label displaying #3 bottom aligned at (#1, #2)
+\newcommand{\ttp@botalign}[3]{%
+  \vbox to 0pt{%
+    \vbox to #2{\vss\hskip#1 \strut #3}
+    \vss
+  }%
+}
+
+% Define the title page style.
+
+\renewcommand{\titlestyle}[3]{
+  \null\vfill\vfill
+  \vbox{%
+    \ttp@botalign{169pt}{104pt}{#1}%
+    \ttp@topalign{170pt}{90pt}{\footnotesize #2}%
+    \hbox{\hskip 40pt
+      \begin{mfpic}[20][20]{3}{40}{0}{6}
+        \fillcolor{blu}\gfill\polygon{(8.5,1.8),(30,1.8),(29.8,1.6),(8.5,1.6)}
+        \fillcolor{blu}\gfill\polygon{(8.5,1.4),(29.6,1.4),(29.5,1.3),(8.5,1.3)}
+        \mfsrc{\ttp@balloon}
+      \end{mfpic}}%
+  }
+  \vfill
+}
+
+% Define the main pages' style.
+
+\renewcommand{\headerstyle}[3]{
+  \vbox to 100pt {%
+    \ttp@botalign{100pt}{52pt}{#1}%
+    \usepic{\ttp@headerpic}%
+    \vskip 10pt
+  }
+}
+
+\renewcommand{\footerstyle}[3]{\par\hfill\footnotesize #2\\~ \par}
+
+% Associate elements to colors in ToThePoint and hyperref.
+
+\renewcommand{\structurestyle}[1]{{\color{darkblue} #1}}
+\PassOptionsToPackage{linkcolor=darkgrey}{hyperref}
+
+% Use a bullet for the first-level itemize (circles and squares
+% go well together!).
+
+\renewcommand{\labelitemi}{\structurestyle{\textbullet}}
+\ttp@setheadfootheight{100pt}{1em}

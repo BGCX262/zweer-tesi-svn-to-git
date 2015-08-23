@@ -1,0 +1,23 @@
+\begin{slide}{Risultati Sperimentali vs List-Based}
+\begin{center}
+Guadagno in termini di unità funzionali allocate non vincolate
+\begin{tabular}{|l|c||c|c||c|c|}
+\hline
+\multicolumn{2}{|c||}{} & \multicolumn{2}{|c||}{Bandpass}&  \multicolumn{2}{|c|}{Diffeq} \\
+\hline
+Unità Funzionale & Vincolo & LB & FD & LB & FD \\
+\hline
+ASSIGN        & inf &    &    &  1 &  1 \\
+CMP           &   2 &    &    &  1 &  1 \\
+indirect\_ref & inf & 13 &  6 &  7 &  3 \\
+MINUS         &   2 &  2 &  2 &  1 &  1 \\
+MUL           &   1 &  1 &  1 &  1 &  1 \\
+PLUS          &   2 &  1 &  2 &  1 &  1 \\
+READ\_COND    & inf &    &    &  1 &  1 \\
+\hline
+\multicolumn{2}{|l||}{Tempo computazione} & 0.22 & 75.77 & 0.10  & 0.99 \\
+\hline
+\end{tabular}
+\end{center}
+
+\end{slide}

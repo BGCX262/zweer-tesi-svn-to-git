@@ -1,0 +1,9 @@
+\begin{slide}{Modifiche al Calcolo delle forze}
+\textbf{\underline{Modifica al calcolo dei singoli contributi} }\\
+\begin{itemize}
+\item Il Force Directed Originale considera solo parzialmente le mutue esclusioni;
+\item ipotizza che ad ogni assegnamento corrisponda l'allocazione di una nuova unità funzionale in quel passo di controllo;
+\item l'unità potrebbe già essere disponibile perchè utilizzata da un'operazione in mutua esclusione;
+\item \red modifica effettuata: \black si sostituisce alla variazione di probabilità la variazione del numero medio di risorse necessarie allocate.
+\end{itemize}
+\end{slide}

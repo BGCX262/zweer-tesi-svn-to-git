@@ -1,0 +1,141 @@
+% Macro per aggiungere le migliaia
+\makeatletter
+\let\comma\@commaform
+\makeatother
+
+% Environment for inline code (monoscpaced font)
+\newcommand{\cod}[1]{\texttt{#1}}
+
+% Environment for inline memory address
+\newcommand{\addr}[1]{\footnotesize{\texttt{#1}}}
+
+% Redefine \emph to avoid \xspace issue
+\renewcommand{\emph}[1]{\bgroup\em #1\egroup}
+
+% Environment for initial italian abstract
+\renewenvironment{abstract}{
+  \def\abstract@title{Riassunto della tesi}
+  \chapter*{\abstract@title}
+   \addcontentsline{toc}{chapter}{\abstract@title}
+  \renewcommand\thepage{\roman{page}}
+  \onehalfspacing
+}{}
+
+% Environment for two listings
+\newenvironment{twolistings}[2]{%
+  \begingroup%
+  \tabskip=0pt%
+  \setbox2\vbox\bgroup%
+    \halign\bgroup%
+      \vrule\hbox{\vbox{\hsize=#1##}}~\vrule~ & %
+            \hbox{\vbox{\hsize=#2##}}~\vrule\cr %
+      \vskip1em}{%
+      \cr%
+    \egroup%
+  \egroup%
+  \vbox{\hrule\box2\hrule}%
+  \endgroup%
+}
+
+% Macros for images
+\newcommand{\myfigure}[6][]{%
+  \begin{figure}[h!t]%
+    \centering
+    \vspace{#5}
+    \includegraphics[#1]{#2}%
+    \vspace{#6}
+    \caption{#3}%
+    \label{#4}%
+  \end{figure}%
+} 
+
+\newcommand{\myfiguree}[7][]{%
+  \begin{figure}[h!t]%
+    \centering
+    \vspace{#5}
+    \includegraphics[#1]{#2}%
+    \vspace{#6}
+    \caption[#7]{#3}%
+    \label{#4}%
+  \end{figure}%
+} 
+
+\newcommand{\mysinglefigure}[6][]{%
+  \begin{figure}[p!]%
+    \centering
+    \vspace{#5}
+    \includegraphics[#1]{#2}%
+    \vspace{#6}
+    \caption{#3}%
+    \label{#4}%
+  \end{figure}%
+} 
+
+
+\newcommand{\mycode}[4]{%
+ \begin{figure}[ht!]%
+  \begin{minipage}[c]{1\textwidth}%
+   {#4
+     \verbatiminput{#1}%
+   }
+  \end{minipage}%
+  \caption{#2}%
+  \label{#3}%
+ \end{figure}
+}
+
+\newcommand{\mytwocode}[9]{%
+  \begin{figure}[ht!]%
+     \vspace{0.5cm}%
+     \subfigure[#2]{%
+       \label{#3}%
+       \begin{minipage}[c]{0.5\textwidth}%
+	     \centering%
+           {#4
+             \verbatiminput{#1}%
+           }%
+  	     \vspace{0.2cm}%
+       \end{minipage}}%
+     \hspace{0.2cm}%
+     \subfigure[#6]{%
+       \label{#7}%
+       \begin{minipage}[c]{0.5\textwidth}%
+	     \centering%
+           {#4
+             \verbatiminput{#5}%
+           }%
+  	     \vspace{0.2cm}%
+       \end{minipage}}%
+     \hspace{0.2cm}%
+     \caption{#8}%
+     \label{#9}%
+   \end{figure}%
+}%
+
+\newcommand{\mytwofracode}[9]{%
+  \begin{figure}[ht!]%
+     \vspace{0.5cm}%
+     \subfigure[#2]{%
+       \label{#3}%
+       \begin{minipage}[c]{0.4\textwidth}%
+	     \centering%
+           {#4
+             \verbatiminput{#1}%
+           }%
+  	     \vspace{0.2cm}%
+       \end{minipage}}%
+     \hspace{0.2cm}%
+     \subfigure[#6]{%
+       \label{#7}%
+       \begin{minipage}[c]{0.6\textwidth}%
+	     \centering%
+           {#4
+             \verbatiminput{#5}%
+           }%
+  	     \vspace{0.2cm}%
+       \end{minipage}}%
+     \hspace{0.2cm}%
+     \caption{#8}%
+     \label{#9}%
+   \end{figure}%
+}%

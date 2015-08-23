@@ -1,0 +1,11 @@
+\begin{slide}{Allocazione - Scheduling - Binding}
+
+\textbf{\underline{Allocazione} }\\
+Vengono definite numero e tipo delle risorse: funzionali, di memorizzazione e di comunicazione.\\
+\vspace{0.5cm}
+\textbf{\underline{Scheduling} }\\
+Il tempo di esecuzione della funzionalità viene suddiviso in intervalli uguali chiamati passi di controllo. Le singole operazioni vengono assegnate ai singoli passi di controllo.\\
+\vspace{0.5cm}
+\textbf{\underline{Binding} }\\
+Gli elementi presenti nella descrizione di sistema vengono mappati su componenti architetturali (unità funzionali, bus, registri).\\
+\end{slide}

@@ -1,0 +1,171 @@
+\chapter{Metodologie di Test}
+\label{c:met}
+
+Lo studio dei sistemi di raccomandazione dipende in grandissima parte dalla buona qualità dei risultati che si ottengono: il fine ultimo, infatti, è quello di fornire suggerimenti all'utente per invogliarlo ad acquistare contenuti multimediali. Se i suggerimenti risultano essere adeguati e quindi l'utente dà fiducia al sistema , si incrementeranno sia gli acquisti sia la soddisfazione generale. Se invece l'utente si accorge che le raccomandazioni fornite non risultano essere attendibili, si creerà un'insoddisfazione nei confronti del sistema, e di conseguenza diminuirà il numero degli acquisti.
+
+Ma come si fa a capire se un algoritmo raccomanda elementi in modo adeguato o meno? In questa circostanza viene in aiuto la statistica, mostrando delle metodologie di test che generano un metro di giudizio per ogni singolo test.
+
+\section{Hold Out}
+\label{c:met:ho}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=1]{./img/HoldOut}
+	\end{center}
+	\caption{Metodologia HoldOut}
+	\label{f:met:ho}
+\end{figure}
+
+La più semplice in assoluto forma di test si ottiene prendendo una piccola percentuale del dataset (solitamente intorno al 3\%) e facendola diventare il TestSet. La restante parte forma invece il TrainSet. Com'è facilmente intuibile in fase di testing si usa il TrainSet per creare il modello che verrà usato in seguito per stimare i risultati del TestSet.
+
+Questo test ha il vantaggio di essere il più semplice di tutti, ma si dimostra anche molto inefficiente in quanto all'interno della percentuale usata come TestSet si possono presentare eccezioni o casi particolari. Un rimedio a ciò può essere fornito dall'introduzione di filtri\nota{Si può ad esempio decidere di prendere in considerazione solamente i voti superiori una certa soglia nel caso di dataset espliciti, oppure utenti che han fornito almeno un certo numero di preferenze.} durante la suddivisione del dataset, ma anche questo non sempre risolve i problemi. Ci si affida quindi ad altre metodologie per ottenere risultati più accurati, mentre questa viene utilizzata se si vuole una stima rapida (seppur imprecisa) del tutto, visto che gli altri metodi sono incredibilmente più complessi dal punto di vista computazionale.
+
+\section{K-Fold Cross Validation}
+\label{c:met:kf}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.7]{./img/KFold}
+	\end{center}
+	\caption{Metodologia K-Fold Cross Validation}
+	\label{f:met:kf}
+\end{figure}
+
+Questa tipologia di test consiste nello stimare l'affidabilità di un'analisi in base a un campione indipendente. Il dataset viene suddiviso casualmente in \corsivo{K} parti con la stessa cardinalità. Una alla volta queste parti diventano il campione di validazione, mentre le restanti $ K - 1 $ sono il campione di training. Questo procedimento viene ripetuto $ K $ volte in modo che tutte le parti diventino, una alla volta, campione di validazione. Durante la validazione di una parte, le altre servono per il training, quindi per la creazione del modello. Questa validazione viene realizzata analizzando un singolo campione del TestSet alla volta, con un meccanismo chiamato Leave One Out (analizzato in seguito): in questo caso però il modello è già stato creato e si usa sempre quello.
+
+I risultati ottenuti dopo tutti i campionamenti vengono riuniti per generare un unico risultato che fornisca la stima cercata. Il vantaggio di questo metodo è quindi che ogni parte del dataset faccia da validazione e da training, in modo da non generare overfitting. In letteratura a \corsivo{K} viene solitamente attribuito il valore 10.
+
+\section{Leave One Out Cross Validation}
+\label{c:met:loo}
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=0.7]{./img/LeaveOneOut}
+	\end{center}
+	\caption{Metodologia Leave One Out}
+	\label{f:met:loo}
+\end{figure}
+
+Un caso particolare del metodo esaminato prima è il Leave One Out, dove in pratica si assegna a \corsivo{K} il valore della cardinalità del dataset. Viene testato un solo valore alla volta, usando tutti gli altri per il training.
+
+Questa validazione può essere considerata migliore di quella precedente in quanto si riesce a indicare con più precisione se esistono dei casi per cui l'algoritmo sbaglia, fornendo raccomandazioni errate. C'è anche da dire, però, che computazionalmente è molto più pesante in quanto il modello deve essere ricreato molte più volte rispetto al semplice K-Fold, quindi si cerca di usarlo solamente per problemi di piccole dimensioni.
+
+\section{Metriche}
+\label{c:met:met}
+
+Dopo aver esaminato le varie tipologie di test si passa ora a capire esattamente come si può valutare un algoritmo e quali metri di giudizio si hanno per determinare se conviene o meno.
+
+Si usano quindi delle metriche, valori che mostrano (su una scala relativa o assoluta) un giudizio su quanto è stato valutato dal test, in modo da riuscire a classificare in modo semplice e rapido i vari algoritmi. In seguito verranno mostrate le varie metriche, suddividendole in:
+
+\begin{itemize}
+	\item Metriche di errore;
+	\item Metriche di classificazione.
+\end{itemize}
+
+\subsection{Metriche di errore}
+\label{c:met:met:err}
+
+Servono normalmente per valutare la predizione di un rating\nota{Il campo normale di utilizzo sono i rating espliciti in quanto viene valutata la distanza tra la predizione e il valore vero. Possono essere anche utilizzate in presenza di valutazioni implicite, ma in questo modo non riescono ad avere tutta la potenza di espressione che hanno nel caso di rating espliciti.}. Non sono molto utilizzate in quanto gli algoritmi correttivi influiscono solamente sulla posizione nella classifica ritornata dalla fase di raccomandazione, e non sulla valutazione stessa.
+
+\subsubsection{Mean Absolute Error (MAE)}
+\label{c:met:met:err:mae}
+
+Letteralmente è l'\corsivo{Errore Medio Assoluto} e rappresenta la distanza media tra il valore predetto e quello reale. Questa distanza è, ovviamente, calcolata in valore assoluto:
+
+\begin{equation}
+\label{e:met:mae}
+	MAE = {1 \over n} \sum_{i = 1}^{n} |\hat{r}_{ij} - r_{ij}|
+\end{equation}
+
+\subsubsection{Mean Squared Error (MSE)}
+\label{c:met:met:err:mse}
+
+Viene tradotto letteralmente come \corsivo{Errore Quadratico Medio} ed è la differenza quadratica media tra i valori osservati e i valori attesi. Si calcola in modo simile al MAE:
+
+\begin{equation}
+\label{e:met:mse}
+	MSE = {1 \over n} \sum_{i = 1}^{n} {(\hat{r}_{ij} - r_{ij})}^2
+\end{equation}
+
+\subsubsection{Root Mean Squared Error (RMSE)}
+\label{c:met:met:err:rmse}
+
+\`E la radice quadrata dell'MSE e rappresenta la varianza interna data dal rapporto fra la devianza interna e la numerosità totale:
+
+\begin{equation}
+\label{e:met:rmse}
+	RMSE = \sqrt{MSE}
+\end{equation}
+
+\subsection{Metriche di classificazione}
+\label{c:met:met:clas}
+
+\subsubsection{Recall}
+\label{c:met:met:class:rec}
+
+Nella raccomandazione, un elemento può essere fondamentalmente di due tipi: rilevante per l'utente, che quindi si aspetta di trovarlo in cima alla lista, con un punteggio alto, oppure non rilevante per l'utente, che quindi si stupirebbe se fosse nella parte alta della lista. Proprio per questi motivi ogni elemento raccomandato può essere classificato in uno dei seguenti modi:
+
+\begin{description}
+	\item[True Positive (TP)] item consigliati dal sistema e rilevanti per l'utente, ovvero quelli che giustamente ricoprono una posizione alta nella classifica;
+	\item[False Positive (FP)] item consigliati dal sistema, ma che non ricoprono un ruolo rilevante per l'utente; rappresentano gli errori ""positivi'' del sistema;
+	\item[True Negative (TN)] elementi che non sono consigliati dal sistema e che non sono rilevanti per l'utente, quindi quelli che giustamente hanno un rating basso;
+	\item[False Negative (FN)] elementi che non vengono raccomandati dal sistema, ma che l'utente vorrebbe vedersi consigliati.
+\end{description}
+
+La recall, una delle metriche più accurate per valutare le prestazioni di un algoritmo di raccomandazione, si basa su un'idea molto semplice: quanti elementi rilevanti sono stati consigliati tra tutti quelli interessanti per l'utente? In formule:
+
+\begin{equation}
+\label{e:met:rec}
+	Recall = {TP \over {TP + FN}}
+\end{equation}
+
+Proprio per questa sua caratteristica di considerare una percentuale del totale degli elementi viene definita una metrica di completezza che dipende molto dalla lunghezza della lista da raccomandare, quindi dal parametro N della lista Top-N: per ""positivi'' e ""negativi'' infatti si intendono quegli elementi che compaiono o meno nelle prime N posizioni della lista.
+
+Com'è ovvio pensare, a valori alti di recall corrispondono algoritmi più accurati\nota{Il valore massimo della recall sarà 1 quando non esistono ""false negative'', mentre sarà 0 nel caso pessimo, ovvero quando non esistono ""true positive''.}.
+
+\subsubsection{Precision}
+\label{c:met:met:class:pre}
+
+Anche questa è una delle metriche più accurate nella valutazione di un algoritmo di raccomandazione, ma, a differenza della recall, non misura la completezza, bensì l'esattezza e l'affidabilità dell'algoritmo, misurando infatti la percentuale di elementi consigliati che l'utente trova rilevanti, rispetto al numero di quelli raccomandati in totale\nota{Nella formula seguente \corsivo{N} è lo stesso di \corsivo{Top-N}, rappresenta quindi il numero di elementi che rientrano nella raccomandazione visibile all'utente.}:
+
+\begin{equation}
+\label{e:met:pre}
+	Precision = {TP \over N}
+\end{equation}
+
+Come si è visto per la recall, anche questa metrica dipende fortemente dal parametro N.
+
+\subsubsection{Expect Percentile Ranking (EPR)}
+\label{c:met:met:class:epr}
+
+La \corsivo{Votazione Attesa Percentuale} è una misura della qualità che considera altro oltre alla lista Top-N: preso infatti un campione di raccomandazioni indica, percentualmente, la posizione in classifica in cui vengono consigliati gli elementi. Si calcola nel seguente modo:
+
+\begin{equation}
+\label{e:met:epr}
+	EPR = {{\sum_{u, i} r^T_u i \times rank_u i} \over {\sum_{u, i} r^T_u i}}
+\end{equation}
+
+\`E quindi la somma delle posizioni in classifica di tutti gli item del campione preso in esame, diviso per la sua numerosità.
+
+Più è basso il valore dell'EPR, più il sistema ha predetto gli elementi visti dall'utente nelle prime posizioni. Il 50\% corrisponde a una raccomandazione effettuata prendendo i valori in modo casuale, e più si cresce più lo scenario peggiora.
+
+\subsubsection{Average Reciprocal Hit Rank (ARHR)}
+\label{c:met:met:class:arhr}
+
+\`E una misura della qualità che esamina la posizione in cui un elemento viene raccomandato all'interno della lista stessa. Si ripensi alla precision e la si ridefinisca come il rapporto tra una raccomandazione ritenuta importante per l'utente (ovvero un TP), chiamata \corsivo{hit} e il numero \corsivo{n} di raccomandazioni:
+
+\begin{equation}
+\label{e:met:hr}
+	HitRate = {\#Hits \over n}
+\end{equation}
+
+Quando l'Hit Rate è uguale a 1, l'algoritmo è riuscito a raccomandare tutti gli elementi rilevanti. Non viene però presa in considerazione la posizione in classifica in cui viene consigliato l'elemento: non c'è differenza se quello meno rilevante è stato suggerito per primo mentre quello più rilevante compare all'ultimo posto.
+
+Superiamo questa limitazione utilizzando la metrica ARHR che dà un punteggio a ogni hit, sulla base della posizione nella lista. Definito \corsivo{h} il numero di hit che avvengono nelle posizioni \corsivo{p\pedice{1}}, \corsivo{p\pedice{2}}, \dots, \corsivo{p\pedice{N}}: 
+
+\begin{equation}
+\label{e:met:arhr}
+	ARHR = {1 \over n} \sum_{i = 1}^{h} {1 \over {p_i}}
+\end{equation}
+
+Agendo in questo modo gli hit nelle posizioni alte della classifica valgono di più di quelli nelle posizioni basse. Se gli elementi compaiono tutti in prima posizione, allora il valore dell'ARHR coincide con quello dell'Hit Rate. Quando invece gli hit avvengono nelle posizioni basse della classifica l'ARHR diminuisce fino ad arrivare al valore limite di $ {{HR} \over n} $.

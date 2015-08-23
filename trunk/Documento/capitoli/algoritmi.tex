@@ -1,0 +1,273 @@
+\chapter{Algoritmi di Raccomandazione}
+\label{c:algo}
+
+In questo capitolo vengono presentati gli algoritmi usati per effettuare una raccomandazione, introducendo prima cosa sia nella pratica un sistema di raccomandazione e quali dati utilizzi.
+
+\section{Introduzione}
+\label{c:algo:intro}
+
+I sistemi di raccomandazione nascono principalmente grazie all'avvento di tecnologie in grado di permettere la fruizione di servizi personalizzati: anche solo una decina di anni fa non si sarebbe mai pensato di poter richiedere al proprio provider un determinato contenuto multimediale. Ora questo è possibile grazie principalmente all'avvento della banda larga, per di più il cliente può dettare le condizioni e quindi richiedere un servizio sempre migliore.
+
+Ma come avviene questa distribuzione di contenuti? L'\iptv è senz'altro il miglior mezzo per trasmettere questo tipo di richieste, in quanto, essendo parente diretto di Internet, permette ad ogni utente di ricevere un flusso personalizzato. La fruizione può quindi avvenire secondo due modalità differenti, e una terza prevede l'utilizzo delle prime due unite:
+\begin{description}
+	\item[Streaming] il contenuto viene visionato ""in diretta'', mentre lo si sta scaricando.
+	\item[Download] il contenuto è disponibile solo dopo averlo in locale. Questa modalità è molto comoda in quanto permette di utilizzare protocolli come il Torrent e di accedere alla risorsa anche in un secondo momento, magari in modalità offline.
+	\item[Download Streaming] il contenuto è visionato come in streaming, ma alla fine della visione è disponibile in locale e quindi può essere rivisto in un secondo momento.
+\end{description}
+
+Questa continua evoluzione delle tecnologie genera un aumento della qualità richiesta: l'elenco dei titoli disponibili presso i servizi di \vod è in continua crescita, e con esso cresce anche la complessità della ricerca del contenuto, con la complicazione che il tutto dev'essere controllato tramite un semplice telecomando. Distinguiamo due tipi di ricerca:
+\begin{description}
+	\item[Information Retrieval (IR)] permette la ricerca del contenuto tramite una parola chiave. Questa ricerca avviene in maniera esatta, quindi i punti di debolezza sono la parola chiave e il sistema, in quanto un contenuto può essere stato memorizzato con un nome diverso da quello conosciuto dall'utente. Inoltre, condizione necessaria per la ricerca è la conoscenza, da parte dell'utente, della risorsa stessa, e questo rende la ricerca inutile.
+	\item[Information Filtering (IF)] permette un filtraggio delle informazioni in base alle preferenze dell'utente. Questo sistema, nato all'inizio degli anni `90, si sta ritagliando una fetta sempre più ampia di mercato in quanto non è necessario l'intervento dell'utente nella fase di ricerca, ma solamente in quella di valutazione del risultato. \`E da questo tipo di ricerca che sono nati i sistemi di raccomandazione, e negli ultimi anni stanno prendendo sempre più piede sia in ambito accademico sia in ambito commerciale in quanto si è potuto vedere che consigliare all'utente un oggetto per il quale nutre un certo interesse aumenta le vendite. Questi sistemi prendono come input il \corsivo{profilo utente}, ovvero lo storico dell'utente all'interno del sistema: quali contenuti (in seguito chiamati \corsivo{item}) ha visualizzato, per quali ha espresso una votazione, quali gli sono già stati consigliati e così via. Inoltre ogni item è descritto tramite un insieme in informazioni (chiamate \corsivo{metadati}) che lo caratterizzano (per esempio un film può essere descritto dal regista, dal genere, dagli attori e via dicendo). Grazie a queste, poche, informazioni il sistema è in grado di consigliare nuovi contenuti all'utente, sperando che questi suggerimenti siano di suo gradimento.
+\end{description}
+Nella trattazione verrà presa in considerazione solamente la ricerca IF in quanto quella IR non è di particolare interesse.
+
+\section{Dati utilizzati}
+\label{c:algo:dati}
+
+Gli input utilizzati sono fondamentalmente di due tipi:
+\begin{itemize}
+	\item La matrice \icm (\grassetto{Item Content Matrix}) che contiene tutti i metadati dei vari item. Le colonne sono quindi gli item (in futuro sarà sempre l'indice \corsivo{j}), mentre le righe sono le differenti parole (vedremo in seguito come si ricavano queste parole) che descrivono le proprietà di cui si vuol tenere traccia. Queste proprietà possono essere inserite o dal sistema (solitamente in fase di aggiunta dell'item) o dagli utenti collaborativamente: in questo modo non ricade tutto sulle spalle dell'azienda che mette a disposizione il servizio. Per contro, le informazioni potrebbero non essere sufficientemente precise in quanto la valutazione dell'utente è sempre soggettiva. Questa matrice viene utilizzata solamente negli algoritmi \corsivo{Content-Based}.
+	\begin{figure}
+		\begin{center}
+			\includegraphics[scale=1]{./img/MatriceICM}
+		\end{center}
+		\caption{Matrice ICM}
+		\label{f:algo:icm}
+	\end{figure}
+	\item La matrice \urm (\grassetto{User Rating Matrix}) contiene lo storico di tutti gli utenti presenti nel sistema. Le righe rappresentano gli utenti (indicati con l'indice \corsivo{i}), mentre le colonne rappresentano (come visto per la matrice \icm) gli item \corsivo{j}. Ogni elemento della matrice sarà quindi la votazione che l'utente \corsivo{i} ha dato all'item \corsivo{j}. Questa tipologia di matrice si usa negli algoritmi \corsivo{Collaborativi}.
+	\begin{description}
+		\item[Profilo Utente] è una riga di questa matrice: rappresenta le preferenze di un utente.
+	\end{description}
+	\begin{figure}
+		\begin{center}
+			\includegraphics[scale=1]{./img/MatriceURM}
+		\end{center}
+		\caption{Matrice URM}
+		\label{f:algo:urm}
+	\end{figure}
+\end{itemize}
+
+Come output il sistema di raccomandazione può restituire due liste differenti:
+\begin{description}
+	\item[Individual Scoring] ovvero la votazione che l'utente darebbe ai vari item. In base all'algoritmo scelto questa votazione può essere assoluta o relativa.
+	\item[Top-N Recommendation] è l'elenco degli N item più vicini ai gusti dell'utente. Questa lista viene solitamente creata mettendo in ordine decrescente la lista precedente.
+\end{description}
+
+Ma come viene costruita la matrice \urm? Nei paragrafi successivi si tratterà la raccolta dei vari rating.
+
+\subsection{Rating Espliciti}
+\label{c:algo:dati:esp}
+
+Quando un utente è consapevole di dare un voto a un contenuto si dice che questo voto è stato dato in modo esplicito. Solitamente si usa una scala numerica, per esempio tra 1 e 5 oppure tra $-2$ e $+2$. Il valore 0 significa che non vi è stata interazione tra l'utente e il sistema per quel determinato item. I valori più bassi (intesi come inferiori rispetto a una soglia o predeterminata o calcolata a runtime) vengono considerati negativi ai fini della valutazione, mentre quelli alti positivi. Questa tipologia di rating è molto più comoda e genererà una raccomandazione molto più precisa delle altre tipologie. Sussistono però dei problemi che la rendono non sempre la più usata:
+\begin{itemize}
+	\item la scala di valori varia da utente a utente in quanto è estremamente soggettiva;
+	\item un utente può trovarsi a dare voti a caso: in questo caso risulterebbe molto più conveniente utilizzare una valutazione implicita, in quanto l'utente contribuisce solamente con la sua superficialità ad aumentare la complessità della raccomandazione;
+	\item non tutti gli algoritmi di raccomandazione utilizzano le stesse scale, quindi può essere necessario riscalare le votazioni in modo da conformarle con quelle scelte dall'algoritmo.
+\end{itemize}
+
+\subsection{Rating Implicito}
+\label{c:algo:dati:imp}
+
+Molto spesso il sistema non riesce ad avere delle votazioni direttamente dagli utenti, quindi si deve cercare un altro modo per far esprimere un giudizio. Il sistema utilizzato più di frequente è considerare la votazione in modo binario: 0 se l'item non è stato visto dall'utente e 1 viceversa. In questo modo si avrà un giudizio poco personale in quanto un utente potrebbe aver richiesto un item non per se stesso, oppure potrebbe averlo visto e non essergli piaciuto.
+
+Purtroppo però questo tipo di rating è molto usato in quanto non sempre l'utente è disposto a ""perdere tempo'' nel dare i voti, e quindi bisogna cercare di ricavarli altrove.
+
+\subsection{Cambiamenti all'interno di un dataset}
+\label{c:algo:dati:camb}
+
+Un sistema di raccomandazione non rimane stazionario, ma continua a mutare nel tempo. In particolare i nostri dati possono modificarsi in 3 modi:
+\begin{itemize}
+	\item un utente \corsivo{i} visiona un contenuto \corsivo{j} e ne dà un voto (supponendo di avere un rating esplicito): nella matrice verrà modificato il valore \urm(\corsivo{i}, \corsivo{j}) in modo da rappresentare il nuovo voto;
+	\item un nuovo item viene inserito nel sistema: la matrice \urm avrà quindi una colonna in più, inizializzata a zero per non alterare la raccomandazione degli altri item;
+	\item un nuovo utente comincia ad usare il sistema: la matrice \urm acquisterà una nuova riga, sempre inizializzata a zero in modo da non influenzare i suggerimenti dati agli altri utenti.
+\end{itemize}
+
+In un sistema reale questi cambiamenti avvengono continuamente, basti pensare a quanti nuovi utenti giornalieri o contenuti audiovisivi possa avere un sistema complesso come YouTube. Dal momento che si vuole mantenere un certo livello di affidabilità per i suggerimenti, bisognerà mantenere aggiornato il modello su cui si basano tutte le raccomandazioni. Questo è però un calcolo molto complesso dal punto di vista computazionale, quindi si dovrà arrivare a un compromesso tra efficienza ed efficacia.
+
+\section{Composizione di un Sistema di Raccomandazione}
+\label{c:algo:compo}
+
+Il sistema deve essere sempre pronto a rispondere se interrogato, un utente non accetterebbe mai di dover aspettare che il sistema finisca un calcolo prima di servirlo. Proprio per questo viene organizzato in tre fasi:
+\begin{description}
+	\item[Batch] è la fase di creazione del modello: è impensabile lavorare ogni volta su tutti i dati a disposizione, quindi si genera a intervalli regolari un modello che possa poi permettere la costruzione della raccomandazione vera e propria. Questa fase è molto onerosa dal punto di vista computazionale e proprio per questo non viene effettuata ogni volta che cambiano i dati, ma solo quando il sistema è poco carico. Il tempo che intercorre tra le due creazioni di un modello deve tener conto della velocità con cui cambiano i dati: sistemi come YouTube non possono permettersi di ricalcolare il modello una volta al mese in quanto i dati cambiano con una frequenza impressionante, anche se questo significa avere continuamente a che fare con enormi matrici. Fortunatamente queste matrici \urm sono incredibilmente sparse in quanto l'utente interagisce solamente con una ridottissima parte del sistema, e quindi possono essere conservate in strutture dati più efficienti.
+	\item[Real-Time] una volta creato il modello il sistema può essere interrogato per avere una raccomandazione. Quest'operazione è molto più snella e deve anche essere molto più veloce, in quanto con una risposta tardiva l'utente potrebbe perdere fiducia nel sistema. La raccomandazione viene quindi calcolata prendendo come input il modello da una parte e il profilo utente dall'altra. Sta poi all'algoritmo essere abbastanza robusto da poter accettare anche utenti con un profilo aggiornato rispetto a quanto registrato nel modello oppure utenti nuovi e quindi con un profilo che non compare nel modello: si partirà dalle nuove informazioni fornite per generare l'opportuna lista di suggerimenti.
+	\item[Antireshuffling] interviene dopo che il sistema ha generato la raccomandazione: in diversi momenti il profilo utente preso in considerazione cambia in quanto possono essere state aggiunte delle valutazioni, o modificate altre. In questo caso l'utente si vedrà suggerire una lista leggermente diversa che può presentare dei problemi: da un lato una lista troppo simile alla precedente può non soddisfare l'utente perchè c'è il rischio che non ne evidenzi le novità sia riguardanti il profilo utente sia l'evoluzione del modello), dall'altro invece raccomandare un elenco di item troppo diverso da quello precedente potrebbe essere interpretato come se il sistema estraesse gli elementi da raccomandare con casualità e conseguente scarsa attendibilità. \`E necessario quindi riprocessare la nuova lista cercando di renderla né troppo dinamica né troppo statica: questo è proprio il compito dell'antireshufflin\nota{Questo argomento verrà trattato molto brevemente in questo lavoro in quanto lo scopo principale non è quello di mostrare le caratteristiche degli algoritmi, ma fornire una piattaforma per sviluppare e testare tutto un sistema di raccomandazione. Per avere maggiori dettagli sull'argomento si rimanda ad altri lavori di tesi precedenti a questo.}.
+\end{description}
+
+\section{Algoritmi di Raccomandazione}
+\label{c:algo:algo}
+
+Una raccomandazione può essere effettuata in vari modi, tenendo conto di fattori diversi o, più semplicemente, ascoltando pareri differenti. Anche nella vita quotidiana si sa che un suggerimento non è mai univoco: diverse persone possono ragionare in modo diverso, e quindi condurre a conclusioni differenti. Identico è il mondo dei sistemi di raccomandazione, dove non c'è mai un suggerimento perfetto e assoluto, ma tanto modi diversi per arrivare a un parere. Questi modi diversi sono i vari \grassetto{algoritmi di raccomandazione}. 
+
+Ogni algoritmo è caratterizzato da un certo input, un certo output, ma soprattutto un differente modo di utilizzare i dati per creare il proprio modello. Proprio per questo si vedrà che vi sono modelli più o meno accurati (verranno poi presentate anche le metriche per valutare quest'accuratezza).
+
+Di seguito verranno analizzate le diverse famiglie di algoritmi, con un occhio particolare a quelle utilizzate nel seguito della trattazione per costruire la piattaforma desiderata.
+
+\begin{figure}
+	\begin{center}
+		\includegraphics[scale=1]{./img/TipiAlgoritmi}
+	\end{center}
+	\caption{Classificazione degli algoritmi di Raccomandazione}
+	\label{f:algo:algo}
+\end{figure}
+
+\subsection{Algoritmi con modello nello spazio latente}
+\label{c:algo:algo:lat}
+
+Molto spesso memorizzare tutte le preferenze degli utenti o tutte le caratteristiche di un item è un lavoro che richiede troppo spazio, e di conseguenza anche manipolare questi dati è troppo gravoso dal punto di vista computazionale. Proprio per questo si cerca di diminuire lo spazio utilizzato, avvalendosi del cosiddetto spazio latente. Gli algoritmi che ne fanno uso descrivono il dataset grazie a un insieme ridotto di caratteristiche, dette \corsivo{features}, ricavate attraverso una decomposizione della matrice di partenza. Queste \corsivo{features} possono rappresentare:
+
+\begin{itemize}
+	\item l'interazione implicita tra l'utente e l'item nel caso di algoritmi collaborativi (in questo caso si attua una decomposizione della matrice \urm);
+	\item il contenuto implicito di ogni item, ovvero gli stem che rappresentano ogni elemento del sistema, nel caso di algoritmi Content-Based (ora invece si ha una decomposizione della matrice \icm).
+\end{itemize}
+
+Grazie a questo sistema è anche possibile ridurre notevolmente il rumore generato dall'algoritmo in quanto vengono eliminati i dati meno significativi ai fini della raccomandazione. Una delle tecniche per generare questo spazio latente è la decomposizione matematica SVD (Singolar Value Decomposition). Prende come input la matrice \corsivo{M} di dimensioni $ a \times b $ e la dimensione latente \corsivo{l}, che rappresenta il numero di \corsivo{features} che si vogliono considerare. Il risultato della decomposizione sono tre matrici:
+
+\begin{description}
+	\item[U] è una matrice unitaria di dimensioni $ a \times a $;
+	\item[S] è una matrice diagonale di dimensioni $ l \times l $ che rappresenta, attraverso valori sempre positivi, le \corsivo{features}, ovvero i valori singolari della matrice \corsivo{M} di partenza;
+	\item[V'] è la trasposta coniugata di una matrice unitaria di dimensioni $ b \times b $.
+\end{description}
+
+In questo modo quindi si rafforzano i legami tra elementi simili della matrice di partenza, e si riescono anche a trovare dipendenze nascoste tra i diversi elementi.
+
+\subsection{Algoritmi Content-Based}
+\label{c:algo:algo:cont}
+
+Si basano sull'analisi delle proprietà dei diversi item, quindi all'utente verranno proposti sempre contenuti simili a quelli che egli stesso ha valutato positivamente. Rappresenta sicuramente il metodo più semplice e veloce per effettuare una raccomandazione. Esiste anche un retro della medaglia: dopo aver esaminato tutti i contenuti simili a quelli di suo gradimento, l'utente si ritroverà in sostanza tanti doppioni, o magari, come nel caso dei film, lo stesso elemento, semplicemente rivisitato o reinserito da parte del sistema. Inoltre si possono presentare delle ambiguità: tornando sempre all'esempio cinematografico, due film possono avere lo stesso regista, un cast simile e per questo essere proposti entrambi, pur essendo di due generi completamente differenti, col rischio che uno dei due non sia di nessun interesse per l'utente.
+
+Per cercare di rimediare a questo inconveniente si può restringere l'analisi ad alcuni campi, per esempio non tenere in considerazione il regista, privilegiando altri elementi come il cast. In questo modo si possono proporre contenuti interessanti che l'utente non avrebbe né pensato né saputo ricercare. 
+
+Sicuramente si presentano molte problematiche con questo tipo di algoritmi:
+
+\begin{itemize}
+	\item Le proprietà degli item devono essere inserite in modo preciso e leggibile dall'algoritmo (poi si vedrà come avviene il ""parsing'' delle stesse).
+	\item Le proprietà possono essere sparse: in fase di inserimento sono state ""sottovalutate'' o ignorate talune proprietà, mentre per altri item le stesse sono ritenute molto importanti e specificate. \`E anche possibile che a seconda della persona fisica responsabile dell'inserimento dell'item nel sistema cambino le proprietà scelte: l'operatore \corsivo{A} è molto scrupoloso riguardo al cast, mentre l'operatore \corsivo{B} conosce tutte le sfumature dei generi, per questo introduce anche quelli di nicchia, sconosciuti ai più.
+	\item Come detto in precedenza due elementi possono avere le stesse proprietà, e magari uno non è di gradimento all'utente: come fa in questo caso l'algoritmo a distinguerli e a capire quale consigliare e quale no?
+	\item I suggerimenti sono sempre molto simili agli item già visti dall'utente: se ad esempio il fruitore non ha mai visto un film western, il sistema non arriverà mai a consigliargli un film di quel tipo, a discapito di altri che con ogni probabilità gradirebbe di più.
+	\item Gli utenti nuovi non riceveranno mai una raccomandazione adeguata in quanto il sistema non ha elementi per fornirgliela, mentre quelli con poche preferenze si vedranno suggeriti più volte contenuti identici. Solamente nel caso di profili più ""vissuti'' si avranno suggerimenti migliori.
+\end{itemize}
+
+La trattazione di questa tipo di algoritmo verterà su quello definito \grassetto{diretto}. Possiamo suddividerlo in diverse fasi, ognuna con la sua funzione specifica:
+
+\begin{description}
+	\item[Tokenizzazione] è l'operazione che prende come input le diverse proprietà dell'item e cerca di elaborarne dei token, in modo che possano essere analizzati più velocemente. Un token è solitamente una singola parola, ma può essere anche una serie di parole come nel caso del nome e del cognome di un attore. Quest'operazione viene effettuata per isolare i termini che in seguito verranno riconosciuti come ""importanti'' per la buona riuscita dell'algoritmo.
+	\item[Eliminazione delle Stop Words] avviene subito dopo la suddivisione in token: sono rimossi tutti quegli elementi inutili come ad esempio gli articoli, le congiunzioni e tutte quelle parole che non risultano essere importanti ai fini della raccomandazione.
+	\item[Stemmizzazione] modifica parole come sostantivi e aggettivi, eliminando prefissi e suffissi. In questo modo parole simili avranno la stessa valenza per l'algoritmo. Ad esempio le parole ""corsa'', ""correre'' e ""corridore'' saranno tutte riconducibili allo stesso \corsivo{stem} ""cor''. Il risultato di quest'operazione è il cosiddetto \bow (\grassetto{Bag Of Words}).
+	\item[Assegnazione di un peso ai metadati] è l'operazione successiva: si effettua un'analisi statistica per calcolare il peso che ogni stem o token ha nei confronti dell'item in cui appare: ad esempio la presenza di un cantante all'interno di un film (magari un cammeo) sarà molto meno importante rispetto alla sua presenza all'interno di un concerto. Si procede quindi al calcolo del TF-IDF (Term Frequency - Inverse Document Frequency). Il Term Frequency è un semplice numero che rappresenta le occorrenze di una parole nelle proprietà di un item. L'Inverse Document Frequency è sempre un numero, l'inverso del numero di occorrenze di un certo token all'interno di tutto il catalogo. Entrambi i pesi possono essere normalizzati per il totale degli elementi del \bow. Da questi pesi se ne ricava uno solo, che viene usato come il valore dell'elemento della matrice \icm.
+\end{description}
+
+Si genera quindi uno spazio vettoriale dove gli assi sono i diversi steam che appaiono dentro alla matrice \icm. Gli item vengono rappresentati come vettori in questo spazio. Per completare la raccomandazione si deve disegnare il vettore dell'utente: viene calcolato come la somma dei voti espressi, moltiplicati per la colonna della matrice \icm (quindi per l'item) relativa. Gli item da consigliare saranno poi quelli col coseno dell'angolo compreso tra vettore utente e vettore proprio più alto.
+
+\subsubsection{LSA Cosine}
+\label{c:algo:algo:cont:lsa}
+
+Questo algoritmo rappresenta lo stato dell'arte per quanto riguarda quelli Content-Based. Si basa su un unico concetto base: l'aggregazione di tutte le parole che compaiono (o non compaiono) all'interno di un testo, stabilisce un insieme di vincoli di reciprocità, che determinano una similarità di significato tra le parole stesse, e permette di raggruppare quelle simili. Utilizza, come l'algoritmo Sarwar che tratteremo in seguito, la decomposizione SVD della matrice \icm.
+
+\begin{description}
+	\item[Generazione del modello] avviene applicando anzitutto una decomposizione SVD sulla matrice \icm, usando una specifica dimensione latente \corsivo{k}\nota{La definizione del parametro \corsivo{k} è comunemente effettuata in modo empirico.}. Si ottengono quindi tre matrici: $ U_k $, $ S_k $ e $ V_k $. La nuova \corsivo{ICM\pedice{k}}, data dal prodotto $ S_k * V'_k $ e che verrà usata come modello dell'algoritmo, è pulita dal rumore e integra già le diverse correlazioni tra gli stem.
+	\item[Generazione del suggerimento] ha come input la matrice \urm, il profilo utente e il modello generato in precedenza. Ogni item viene rappresentato nello spazio creato dagli stem del modello. Quindi viene calcolata la similarità tra il vettore dell'utente e quelli degli elementi che non compaiono nel profilo tramite il coseno dell'angolo compreso tra i due vettori: più è alto, più l'elemento considerato si avvicina ai gusti dell'utente e quindi il rispettivo contenuto sarà raccomandato.
+\end{description}
+
+\subsection{Algoritmi Collaborativi}
+\label{c:algo:algo:coll}
+
+A differenza della tipologia vista in precedenza, questi algoritmi si basano solamente sui gusti della comunità di utenti. Simulano quindi una normale richiesta di suggerimenti tra due esseri umani: se l'utente \corsivo{A} ha un amico con gusti simili, sarà sufficiente chiedergli un consiglio per ritrovarsi con una raccomandazione conforme ai gusti di \corsivo{A}. Si basano su due assunzioni fondamentali:
+
+\begin{description}
+	\item[Vicinanza tra utenti] in quanto utenti con gusti simili voteranno sempre gli elementi in maniera simile;
+	\item[Vicinanza tra item] poiché gli item ""simili'' saranno votati sempre in maniera simile.
+\end{description}
+
+Proprio per questo due contenuti sono valutati simili non tanto quando sono simili tra loro, ma quando la comunità li vota in modo simile.
+
+A differenza degli algoritmi che si basano sul contenuto, quelli collaborativi possono portare al cosiddetto \grassetto{effetto serendipity} (sorpresa): mentre nel primo caso l'utente comprende sempre il perché di una raccomandazione, ora può rimanere stupito dalla stessa, in quanto gli può essere consigliato un elemento fuori dai suoi schemi, ma che è stato votato da soggetti dai gusti simili ai suoi. Proprio qui ha origine uno dei vantaggi maggiori degli algoritmi collaborativi, ovvero il non basarsi su altre informazioni se non i giudizi della comunità.
+
+Certamente sussistono anche molti limiti a questo tipo di approccio:
+
+\begin{itemize}
+	\item quando un nuovo utente entra nel sistema non può essere associato a nessun altro utente, quindi non avrà a disposizione una raccomandazione;
+	\item all'aggiunta di un nuovo item, esso dovrà essere anzitutto votato da qualcuno in quanto, altrimenti, non verrà associato a nessun item preesistente e quindi non verrà raccomandato;
+	\item l'accuratezza della raccomandazione è legata alla sparsità della matrice \urm: più essa è piena di informazioni, più sarà preciso il suggerimento;
+	\item utenti con gusti particolari saranno associati con molta difficoltà ad altri utenti, e quindi riceveranno suggerimenti poco accurati.
+\end{itemize}
+
+All'interno degli algoritmi Collaborativi possiamo effettuare un'ulteriore suddivisione:
+
+\begin{description}
+	\item[User-Based] si basano sull'idea di stabilire un rapporto di similitudine tra i diversi utenti della comunità, in modo da costruire una matrice $ m \times m $ (dove \corsivo{m} è il numero degli utenti). Questi algoritmi hanno problemi per quanto riguarda le performance nella costruzione del modello, in quanto una comunità può avere decine o centinaia di migliaia di utenti iscritti. Un altro tipico problema si ha quando si vuole inserire un nuovo utente: bisogna infatti ricreare completamente il modello, sempre con le problematiche che l'utente nuovo si porta dietro (come visto prima).
+	\item[Item-Based] è la tipologia duale di quella precedente: ora si vuole costruire una matrice $ n \times n $ (con \corsivo{n} uguale al numero degli item) che metta in relazione i vari elementi, in modo da trovare quelli simili tra loro. Ogni elemento della matrice è quindi il grado di somiglianza tra l'elemento della riga \corsivo{i} e quello della colonna \corsivo{j} (i numeri sulla diagonale sono ovviamente uguali a 1). Molto spesso questi valori vengono normalizzati, in modo ad averli compresi tra $ -1 $ e $ 1 $ nel caso di rating espliciti, e tra $ 0 $ e $ 1 $ nel caso di rating impliciti. Per eseguire una raccomandazione poi è sufficiente moltiplicare il vettore del profilo utente per la matrice, in modo da ricavare un nuovo vettore con i voti dei singoli item. Una modifica a questo algoritmo è la cosiddetta KNN, in cui la matrice modello viene prima processata ponendo a 0 gli elementi più bassi, lasciandone quindi soltanto K. Questo avviene in quanto gli elementi eliminati non influirebbero nella lista finale, ma creerebbero solamente un rumore che quindi andrebbe a risultare fastidioso per la classifica degli altri elementi.
+\end{description}
+
+Per quanto riguarda le prestazioni, la creazione del modello negli algoritmi Item-Based sarà più rapida in quanto, solitamente, il numero di utenti è di gran lunga superiore a quello di contenuti. Inoltre influisce anche la frequenza con cui un utente o un elemento vengono introdotti nel sistema: anche in questo caso, generalmente, gli utenti nascono con più frequenza dei nuovi elementi\nota{Tutte queste ipotesi valgono in condizioni standard: sistemi come YouTube \grassetto{non} sono standard visto che secondo l'ultima stima ogni minuto vengono caricate 35 ore di contenuti audiovisivi.}. Inoltre l'avere un modello Item-Based risulta essere anche comodo quando si aggiunge un nuovo elemento al sistema: dal momento che questo, prima di essere raccomandato, dovrà raccogliere un certo numero di voti, non è necessario che il modello venga ricreato istantaneamente, quindi non c'è la frenesia che ci sarebbe per il modello User-Based dove ad ogni aggiunta bisogna assolutamente creare un nuovo modello.
+
+\subsubsection{Item-Item Cosine KNN}
+\label{c:algo:algo:coll:iic}
+
+Rientra nella categoria degli algoritmi Item-Based. Ogni elemento del sistema è visto come un vettore nello spazio degli utenti: la similitudine tra due vettori è rappresentata come il coseno dell'angolo tra essi compreso:
+
+\begin{equation}
+\label{e:algo:iic:sim}
+	sim(i, j) = cos(\vec{i}, \vec{j}) = \frac{\vec{i} \cdot \vec{j}}{\|\vec{i}\|^2 \times \|\vec{j}\|^2}
+\end{equation}
+
+Questo coefficiente sarà uguale a 1 nel caso in cui due elementi siano uguali, e a 0 nel caso due elementi non abbiano voti in comune.
+
+Nella fase di raccomandazione, invece, il calcolo da effettuare sarà molto più semplice: 
+
+\begin{equation}
+\label{e:algo:iic:rac}
+	Raccomandazione = Profilo Utente \cdot Modello
+\end{equation}
+
+Questa sarà una lista di voti: nel caso di dataset esplicito si avrà la predizione del voto che l'utente avrebbe dato a quello specifico elemento, mentre nel caso di un dataset implicito sarà la probabilità con cui l'utente potrebbe aver visto quel contenuto ma non aver dato una votazione. In seguito il sistema ordinerà questi voti in ordine decrescente e ne estrarrà i primi N, generando quindi la tanto attesa Top-N da suggerire all'utente stesso.
+
+Il parametro KNN (\corsivo{K Nearest Neighbor}) indica il numero di elementi da tenere in considerazione in fase di creazione del modello, quando vengono trovati i coefficienti di similarità tra i diversi item. Si vanno infatti a utilizzare solamente i K elementi più vicini a quello in fase di analisi. L'eliminazione di tutti gli altri elementi si basa sulla convinzione che essi generino solamente rumore. Questo parametro ha il suo fondamento nella dimensione del dataset: più è piccolo più sarà precisa la raccomandazione, ma un parametro troppo piccolo rispetto alla matrice potrebbe eliminare troppo rumore, e quindi danneggiare la raccomandazione stessa che andrebbe a consigliare solamente elementi troppo vicini a quelli di partenza. Quando K tende a infinito, l'algoritmo perde la sua proprietà KNN e si definisce solamente Item-Item Cosine.
+
+\subsubsection{Item-Item DR}
+\label{c:algo:algo:coll:iidr}
+
+Questo algoritmo (dove DR sta per Direct Relation) è simile al precedente. L'unica differenza è che la similarità tra due elementi della matrice viene calcolata come il numero di occorrenze in cui entrambi gli item sono presenti tra tutti i profili utenti. La fase di raccomandazione, poi, è sempre una semplice moltiplicazione tra il vettore utente e la matrice del modello.
+
+\subsubsection{Sarwar}
+\label{c:algo:algo:coll:sar}
+
+Sempre della famiglia degli Item-Based, questo algoritmo utilizza la decomposizione SVD sulla matrice \urm per ridurre lo spazio fisico occupato. Infatti si utilizzerà solamente una delle tre matrici calcolate tramite la decomposizione. La matrice di similarità tra elementi viene calcolata con i seguenti passaggi:
+
+\begin{enumerate}
+	\item si riceve come input la matrice \urm e un parametro \corsivo{ls} che rappresenta la dimensione dello spazio latente in cui costruire la matrice modello;
+	\item si applica la decomposizione SVD alla matrice \urm ($ m \times n $), utilizzando lo spazio latente \corsivo{ls}: si ottengono quindi le matrici $ U $ ($ m \times ls $), $ S $ ($ ls \times ls $), $ V' $ ($ ls \times n $). Quest'ultima matrice $ V' $ rappresenta il modello dell'algoritmo e, come si può facilmente verificare, è di dimensioni minori rispetto a tutte quelle $ n \times n $ utilizzate in precedenza;
+	\item si moltiplica $ V \times V' $ in modo da ottenere la matrice di similarità (il modello vero e proprio): questa viene creata solamente per i calcoli, in quanto per la memorizzazione si utilizza sempre solo $ V' $.
+\end{enumerate}
+
+Infine per ottenere la raccomandazione si effettua sempre la solita moltiplicazione del vettore del profilo utente per la matrice di similarità, ottenendo un coefficiente per ogni elemento. Ordinando poi in ordine decrescente i coefficienti si avrà la lista Top-N da suggerire.
+
+\subsubsection{Asymmetric SVD}
+\label{c:algo:algo:coll:kor}
+
+Ideato da Yehuda Koren, questo algoritmo\cite{Koren} Item-Based è stato il vincitore della competizione Netflix Prize, e quindi si è imposto come lo stato dell'arte per quanto riguarda gli algoritmi collaborativi. \`E in grado di lavorare sia con dataset impliciti sia espliciti.
+
+Per ogni elemento \corsivo{i} non presente nel profilo dell'utente \corsivo{u} viene calcolato un rating per mezzo della seguente formula:
+
+\begin{equation}
+\label{e:algo:kor:rat}
+	r_{ui} = b_{ui} + q^T_i(|R(u)|^{-{1 \over 2}} \sum_{j \in R(u)} (r_{uj} - b_{uj}) x_{j} + (|N(u)|)^{-{1 \over 2}} \sum_{j \in N(u)} y_{j})
+\end{equation}
+
+Analizziamo ora nel dettaglio la formula:
+\begin{description}
+	\item[$ b_{ui} = \mu + b_{u} + b_{i} $] dove $ \mu $ è la media dei rating del dataset, mentre $ b_{u} $ e $ b_{i} $ sono le distanze (\corsivo{bias}) rispettivamente dei ratings dell'utente $ u $ e della media dei ratings ricevuti dall'item $ i $ rispetto alla media totale $ \mu $;
+	\item[$ |R(u)| $] è la cardinalità dell'insieme dei ratings \corsivo{espliciti} dell'utente $ u $;
+	\item[$ |N(u)| $] è la cardinalità dell'insieme dei ratings \corsivo{impliciti} dell'utente $ u $;
+	\item[$ q $] è il vettore degli elementi $ i $ non votati dall'utente;
+	\item[$ x $] è il vettore degli elementi $ j $ che hanno ricevuto un rating esplicito;
+	\item[$ y $] è il vettore degli elementi $ j $ che hanno ricevuto un rating implicito.
+\end{description}
+
+Questo algoritmo è stato poi leggermente modificato per adattarlo anche a scenari differenti da quello del Netflix Prize:
+
+\begin{itemize}
+	\item alcuni parametri che intervenivano durante la creazione del modello sono stati cambiati in quanto si verificava overfitting sul bias degli utenti e degli elementi, portando quindi la raccomandazione ad essere sempre identica;
+	\item durante la raccomandazione si verifica un ulteriore apprendimento sul profilo dell'utente: per questo è stata leggermente modificata questa fase per poter utilizzare anche dei profili creati ad hoc e non necessariamente facenti parte della matrice \urm.
+\end{itemize}

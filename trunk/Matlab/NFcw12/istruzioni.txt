@@ -1,0 +1,25 @@
+
+=====================================
+=====================================
+SARWAR - COLLABORATIVE FILTERING
+=====================================
+=====================================
+
+caricare il file urm-3.mat
+
+- Il modello è stato creato normalizzando con -3
+- A real-time si applica una normalizzazione -2.5
+
+k=100; % definizione k (dimensione latente)
+N=11; % definizione N (top-N, i.e., numero item da consigliare)
+
+user=sparse(zeros(1,size(urm,2))); % crea user profile vuoto
+
+user(strmatch('"Tears',titles))=5; % inserisce UN rating (nella ricerca della stringa, iniziare titolo con ") -- voti in scala [1..5]
+% in alternativa si può cercare il titolo esatto (utile in caso di ricerca di serie):      user(strmatch('"Shrek"',titles,'exact'))=5;
+
+userNorm=user;userNorm(find(user~=0))=user(find(user~=0))-2.5;userRec=2.5+(userNorm*v(:,1:k)*v(:,1:k)');[i,j]=sort(-userRec);for p=1:N; display(titles(j(p),:)); end %calcola raccomandazione, ordina e restituisce i top-N
+
+========================================================================
+========================================================================
+========================================================================

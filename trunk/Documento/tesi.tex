@@ -1,0 +1,101 @@
+\documentclass[final,italian,titlepage,listoffigures,listoflistings,fullbib,openright,a4paper,nobibtex]{tesi}
+
+\usepackage{graphicx}
+
+\usepackage[LGR,T1]{fontenc}
+\def\sfdefault{cmss}
+
+\usepackage{tabularx}
+\usepackage{calc}
+\usepackage{comma}
+\usepackage{lscape}
+\usepackage[all]{xy}
+\usepackage{thumbpdf}
+\usepackage{enumerate}
+\usepackage{dsfont}
+\usepackage[bf]{caption}
+\makeatletter
+\let\comma\@commaform
+\makeatother
+\hyphenation{vi-sua-liz-za-bi-li
+			 mo-di-fi-ca-te
+			 ge-ne-ra-to
+			 va-lo-ri
+			 si-mi-la-ri-tà
+			 ge-ne-ra-re
+			 fram-men-ta-rie-tà
+			 piat-ta-for-ma
+			 re-in-ge-gne-riz-za-zio-ne
+			 qual-sia-si
+			 initialize-Method
+			 piat-ta-for-ma
+			 mo-del-lo
+			 per-so-na-liz-za-ta}
+
+\begin{document}
+
+\selectlanguage{italian}
+
+\author{Niccolò {\sc Olivieri Achille}}
+\title{Realizzazione di un sistema di raccomandazione in Matlab}
+\anno{2009/2010}
+\matricola{724811}
+\relatore{Prof. Paolo {\sc Cremonesi}}
+\correlatore{Prof. Roberto {\sc Turrin}}
+
+\universita[./img/poli]
+	{Politecnico di Milano}
+	{Facoltà di Ingegneria dell'Informazione}
+	{Corso di laurea in Ingegneria Informatica}
+
+\makeatletter
+\ifpdf
+	\hypersetup{pdftitle={\@title}
+			   ,pdfsubject={Tesi di Laurea Specialistica}
+			   ,pdfauthor={\@author}}
+\fi
+\makeatother
+
+\include{noncapitoli/macros}
+\include{noncapitoli/acronyms}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%								FRONTMATTER								%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\frontmatter
+
+\normalfont
+
+\include{noncapitoli/dedica}
+
+\pagenumbering{Roman}
+\pagestyle{plain}
+
+\include{noncapitoli/sommario}
+\include{noncapitoli/ringraziamenti}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%								MAINMATTER								%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\mainmatter
+
+\include{capitoli/introduzione}
+\include{capitoli/algoritmi}
+\include{capitoli/metodologie}
+\include{capitoli/stato}
+\include{capitoli/reingegnerizzazione}
+\include{capitoli/integrazione}
+\include{capitoli/conclusioni}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%								BACKMATTER								%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\backmatter
+
+\bibliography{tesi}
+
+\end{document}

@@ -1,0 +1,350 @@
+\chapter{Risultati Sperimentali}
+\label{c:res}
+\thispagestyle{empty}
+
+\vspace{0.5cm}
+
+In questo capitolo vengono presentati i risultati sperimentali ottenuti utilizzando l'algoritmo del Force Directed scheduling modificato proposto nel capitolo \ref{c:my} confrontati con quelli della versione originale dell'algoritmo e con quelli forniti dal List-Based. I test sono stati fatti utilizzando l'implementazione realizzata all'interno di PandA. I benchmark utilizzati sono quelli forniti con PandA stesso, in particolare quelli forniti sotto forma di moduli scritti in codice c. La macchina utilizzata per i test è un portatile basato su architettura Intel Sonoma con processore a 1,83 Ghz e 1 GB di memoria RAM PC4300.
+
+In particolare i risultati analizzati sono quelli riferiti a:
+\begin{itemize}
+\item tempo di esecuzione;
+\item numero totale di unità funzionali allocate; il numero fornito è quello totale senza discriminazione fra i diversi tipi di unità funzionale perchè non sono stati inseriti nei dati relativi all'architettura i costi delle diverse unità funzionali, quindi per l'algoritmo minimizzare l'utilizzo di un particolare tipo di un'unità funzionale piuttosto che un altro è irrilevante. Unica eccezione sono i casi caratterizzati dalla presenza di vincoli in cui l'algoritmo distingue fra unità vincolate e unità non vincolate (\ref{c:res:vincoli}).
+\end{itemize}
+In alcuni casi al posto del tempo di esecuzione è riportato il termine "MAX". Questo sta a significare che quella computazione dell'algoritmo ha richiesto più di un migliaio di secondi. In tal caso si è ritenuto che il tempo di esecuzione fosse comunque troppo elevato e quindi non significativo. Un tempo di esecuzione così elevato può manifestarsi solo nel caso di un elevato numero di backtracking e quindi in caso di presenza di vincoli sulle risorse. In particolare si è riscontrato questo problema nell'esecuzione della versione pseudo-originale del Force Directed scheduling (per versione pseudo-originale si intende la versione originale cui sono state fatte leggere modifiche per permettere di aggiungere il backtracking e consentire così di eliminare le soluzioni non accettabili).
+
+Per il numero relativamente elevato delle modifiche introdotte sono state effettuate sessioni di test diverse per mostrare gli incrementi relativi a singole variazioni o a gruppi di esse.
+
+Nelle tabelle con \emph{nFU} si indica il numero totale di unità funzionali allocate dall'algoritmo, con \emph{tempo} il tempo necessario per la computazione dello scheduling in secondi.
+
+\newpage
+
+\section{Dimensioni dei benchmark}
+Si riportano numero di operazioni e numero di salti condizionati presenti nei benchmark utilizzati per testare le diverse versioni dell'algoritmo:
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+Benchmark & nOp & n° salti\\
+\hline
+Adpcm\_decode & 68 & 11 \\
+Adpcm\_encode & 83 & 14 \\
+Arf & 34 & 0 \\
+Bandpass & 52 & 0 \\
+Chemical & 38 & 0 \\
+ComputeForwVector & 77 & 14 \\
+Dct & 58 & 0 \\
+Dct\_wang & 57 & 0 \\
+Diffeq & 27 & 1 \\
+Ewf & 39 & 0 \\
+Ewf\_v2 & 55 & 0 \\
+Kim & 34 & 2 \\
+Maha & 30 & 5 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Numero di operazioni e di salti condizionati di ogni benchmark}
+\label{tab4}
+\end{table}
+
+\section{Variazioni nel calcolo della forza}
+Vengono qui proposti i risultati sperimentali che mostrano i guadagni nella qualità dei risultati ottenuti tramite la modifica della formula per il calcolo della forza introducendo la variazione della somma di probabilità al posto della variazione della probabilità della singola operazione (\ref{c:my:var:force}) e limitando il contributo dovuto a \emph{predecessors' and successors' forces} negative (\ref{c:my:var:corr}).
+
+In particolare per i test in tabella \ref{tabnew2}, in cui non sono presenti costrutti condizionali, l'unica variazione effettiva è quella prodotta dalla variazione nel calcolo delle \emph{predecessors' and successors' forces}.
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c c|c c|}
+\hline
+Benchmark & \multicolumn{2}{c|}{FD Orig.} & \multicolumn{2}{c|}{FD Modif.} \\
+& nFU & tempo & nFU & tempo \\
+\hline
+Arf & 14 & 0.23 & 8 & 0.25 \\
+Bandpass & 20 & 0.55 & 11 & 0.57 \\
+Chemical & 25 & 0.45 & 15 & 0.69 \\
+Dct & 35 & 0.80 & 20 & 1.03 \\
+Dct\_wang & 29 & 0.65 & 20 & 0.85 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Tabella comparativa calcolo Forza originale - calcolo Forza modificato nei test senza costrutti condizionali}
+\label{tabnew2}
+\end{table}
+
+I test di tabella \ref{tabnew} presentando anche costrutti condizionali mostrano invece anche i miglioramenti dovuti all'introduzione della variazione della somma di probabilità.
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c c|c c|}
+\hline
+Benchmark & \multicolumn{2}{c|}{FD Orig.} & \multicolumn{2}{c|}{FD Modif.} \\
+& nFU & tempo & nFU & tempo \\
+\hline
+Adpcm\_decode & 27 & 2.89 & 18 & 10.69 \\
+Adpcm\_encode & 27 & 5.84 & 19 & 43.68 \\
+Diffeq & 14 & 0.09 & 8 & 0.29 \\
+Kim & 9 & 0.46 & 6 & 0.73 \\
+Maha & 10 & 0.39 & 5 & 0.43 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Tabella comparativa calcolo Forza originale - calcolo Forza modificato nei test con costrutti condizionali}
+\label{tabnew}
+\end{table}
+
+Apparentemente il guadagno in termini di unità funzionali risparmiate è notevole, tale da giustificare largamente l'aumento del tempo di esecuzione. Tale aumento è dovuto in primo luogo alla maggiore complessità introdotta nel calcolo della forza dovuta al calcolo della differenza della somma di probabilità e in secondo luogo al fatto che nella versione originale dell'algoritmo la mobilità delle operazioni si riduce molto più velocemente, quindi diminuisce più velocemente il numero di forze da calcolare. Il guadagno è in realtà meno sostanziale di quanto appaia perchè la diminuzione riguarda anche, ma non solo, l'utilizzo di pseudo-unità funzionali che vengono introdotte per eseguire pseudo-operazioni aggiunte dal gcc nella sua rappresentazione interna. Di fatto in alcuni casi l'area occupata da queste pseudo-unità è nulla. Il guadagno in termini di costo d'area nei test proposti è quindi più limitato di quanto appaia inizialmente, ma comunque significativo.
+
+\section{Introduzione della priorità delle operazioni}
+Vengono qui proposti i risultati sperimentali che mostrano i guadagni dovuti all'introduzione della priorità delle operazioni mostrata in \ref{c:my:var:priority}. Ovviamente i test comparativi sono stati effettuati solo su benchmark che presentano costrutti condizionali in quanto in assenza di questi i risultati restano identici (a meno di una leggera maggiorazione nei tempi di computazione dovuta alla gestione delle strutture dati necessarie a memorizzare la priorità delle operazioni). In entrambe le versioni sono state applicate le modifiche suggerite in \ref{c:my:var:force} e \ref{c:my:var:corr}
+(correzione nel calcolo della forza).
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c c|c c|}
+\hline
+Benchmark & \multicolumn{2}{c|}{FD Orig.} & \multicolumn{2}{c|}{FD Modif.} \\
+& nFU & tempo & nFU & tempo \\
+\hline
+Adpcm\_decode & 18 & 11.77 & 18 & 3.54 \\
+Adpcm\_encode & 19 & 43.30 & 19 & 7.92 \\
+Diffeq & 8 & 0.28 & 8 & 0.25 \\
+Kim & 6 & 0.68 & 6 & 0.58 \\
+Maha & 5 & 0.41 & 5 & 0.25 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Tabella comparativa \mbox{Force Directed} senza priorità - \mbox{Force Directed} con Priorità}
+\label{tab3}
+\end{table}
+Come è facile osservare il guadagno in termini di velocità nella computazione senza perdite di qualità di risultati è significativo soprattutto per quei problemi con numero elevato di operazioni e numero medio di operazioni per blocco basico basso.
+
+\section{Cambio del criterio di scelta del prossimo assegnamento}
+I risultati dei test effettuati hanno evidenziato che il miglior criterio di scelta del prossimo assegnamento fra quelli proposti in \ref{c:my:vincoli:next} è l'ultimo di quelli elencati (questo in particolare riferendosi ai test mostrati in \ref{c:test1}; per quanto riguarda i test proposti in \ref{c:test2} i diversi criteri di scelta del prossimo assegnamento danno risultati identici in quanto non esistendo vincoli non esistono neppure forze bloccate), cioè considerare pari a zero al fine del calcolo della forza media le forze bloccate. Si mostrano i risultati relativi a due classi diverse di problemi:
+\subsection{Test senza vincoli sulle risorse}
+\label{c:test2}
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c c|c c|}
+\hline
+Benchmark & \multicolumn{2}{c|}{FD Orig.} & \multicolumn{2}{c|}{FD Modif.} \\
+& nFU & tempo & nFU & tempo \\
+\hline
+Adpcm\_decode & 18 & 3.49 & 18 & 4.33 \\
+Adpcm\_encode & 19 & 7.93 & 20 & 8.04 \\
+Arf & 8 & 0.21 & 8 & 0.21 \\
+Bandpass & 11 & 0.60 & 11 & 0.57 \\
+Chemical & 15 & 0.64 & 15 & 0.68 \\
+Dct & 20 & 0.94 & 20 & 0.82 \\
+Dct\_wang & 20 & 0.81 & 20 & 0.78 \\
+Diffeq & 8 & 0.24 & 9 & 0.22 \\
+Kim & 6 & 0.56 & 5 & 0.58 \\
+Maha & 5 & 0.25 & 5 & 0.25 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Tabella comparativa criterio di scelta del prossimo assegnamento - casi senza vincoli}
+\label{tab6}
+\end{table}
+
+I risultati riportati in tabella \ref{tab6} mostrano che in realtà il cambiare il criterio di scelta del prossimo assegnamento non comporta grandi differenze nei risultati sia dal punto di vista del numero di unità funzionali allocate, sia dal punto di vista del tempo di computazione. Tuttavia la versione finale dell'algoritmo proposta offre un criterio di assegnamento diverso da quello originario, nonostante per questa classe di problemi non comporti un effettivo guadagno, in virtù dei risultati esposti nella successiva sottosezione.
+
+\subsection{Test con vincoli sulle risorse}
+\label{c:test1}
+Vengono anticipati i risultati di alcuni test in caso di presenza di vincoli sulle risorse per giustificare il cambio nel criterio di scelta del prossimo assegnamento. I risultati riportati dimostrano il vantaggio in termini di tempo di esecuzione prodotto dal cambiamento di criterio. I vincoli imposti consistono nel fissare il numero di unità funzionali a :
+\begin{itemize}
+\item[] 1 sommatore
+\item[] 1 sottrattore
+\item[] 1 moltiplicatore
+\item[] 1 comparatore
+\item[] 1 shifter
+\item[] 2 unità per accesso ad array 
+\end{itemize}
+I tipi di unità non elencati sono considerati allocabili in numero infinito.
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c c|c c|}
+\hline
+Benchmark & \multicolumn{2}{c|}{FD Orig.} & \multicolumn{2}{c|}{FD Modif.} \\
+& nFU & tempo & nFU & tempo \\
+\hline
+Arf & 3 & 17.95 & 3 & 8.86 \\
+Bandpass & 7 & 114.27 & 7 & 6.06 \\
+Chemical & 5 & 35.41 & 6 & 21.86 \\
+Dct & 6 & 90.03 & 5 & 103.58 \\
+Dct\_wang &   & MAX & 9 & 192.97 \\
+Ewf           &   &  MAX &  4 & 32.54 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Tabella comparativa criterio di scelta del prossimo assegnamento - casi con vincoli}
+\label{tab7}
+\end{table}
+Da notare come la versione con criterio di scelta modificato trovi una soluzione in tempi ragionevoli anche nei casi in cui la versione che utilizza il criterio originale non riesca a trovarne una entro il tempo di 1000 secondi e che in generale utilizzi comunque meno tempo per la computazione. Il peggioramento nel numero di unità di esecuzione allocate che si è verificato in un caso di test è relativo ad un'unità in grado di eseguire le pseudo-operazioni e pertanto ha poca importanza per il costo in termini di area.
+
+\section{Scheduling con vincoli sulle risorse}
+Vengono ora proposti i risultati nel caso di vincoli con le risorse. Si confrontano tempo di esecuzione e numero di unità allocate di due versioni diverse dell'algoritmo. I vincoli sono quelli riportati in \ref{c:test1}:
+\begin{itemize}
+\item 1° versione: Force Directed modificato con l'introduzione delle modifiche proposte in \ref{c:my:var:force}, \ref{c:my:var:corr} e \ref{c:my:vincoli:back} (correzione nel calcolo delle forze e introduzione del backtracking);
+\item 2° versione: Force Directed modificato con tutte le variazioni proposte in questo lavoro.
+\end{itemize}
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c c|c c|}
+\hline
+Benchmark & \multicolumn{2}{c|}{FD 1° Vers.} & \multicolumn{2}{c|}{FD 2° Vers.} \\
+& nFU & tempo & nFU & tempo \\
+\hline
+Adpcm\_decode & 15 & 19.06 & 14 &  7.36 \\
+Adpcm\_encode & 12 & 93.98 & 14 & 30.82 \\
+Arf           &  4 & 17.95 &  5 &  8.86 \\
+Bandpass      &  7 &114.27 &  8 &  6.06 \\
+Chemical      &  6 & 35.41 &  7 & 21.86 \\
+ComputeForwVector & & MAX  & 11 & 15.73 \\
+Dct           &  5 &103.58 &  6 & 90.03 \\
+Dct\_wang     &    &   MAX &  9 &192.97 \\
+Diffeq        &  7 &  1.06 &  8 &  0.94 \\
+Ewf           &    &   MAX &  4 & 32.54 \\
+Kim           &  5 &  1.28 &  5 &  0.55 \\
+Maha          &  5 &  0.18 &  5 &  0.13 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Tabella comparativa nel caso di scheduling con vincoli sulle risorse}
+\label{tab8}
+\end{table}
+
+I dati dicono che la seconda versione dell'algoritmo fornisce risultati mediamente leggermente peggiori nei casi in cui la prima versione produca la soluzione in tempo ragionevole. Tuttavia la seconda versione a differenza della prima ha prodotto una soluzione accettabile in tempo minore ai 1000 secondi in ogni test e comunque sempre in un tempo decisamente minore rispetto alla prima.
+
+\section{Confronto con i risultati del List Based in caso di vincoli sulle risorse}
+\label{c:res:vincoli}
+In un buon numero di test il Force Directed scheduling ottiene gli stessi risultati in numero di unità funzionali allocate del List Based con un tempo di computazione sensibilmente maggiore. Questo poichè in realtà le unità funzionali più significative nei benchmark considerati erano già state vincolate e questo limita di molto le dimensioni dello spazio progettuale. Esistono tuttavia dei test in cui il Force Directed ha ottenuto una soluzione con un minor numero di unità funzionali allocate.
+
+I vincoli imposti per tali test sono:
+
+\begin{itemize}
+\item[] 2 sommatore
+\item[] 2 sottrattore
+\item[] 1 moltiplicatore
+\item[] 2 comparatori
+\item[] 1 shifter
+\item[] 2 unità per accesso ad array.
+\end{itemize}
+
+\subsection{Diminuzione delle unità funzionali soggette a vincoli}
+In questa sezione sono riportati due benchmark per i quali il Force Directed scheduling ha ottenuto per alcuni tipi di risorsa l'allocazione di un numero di unità inferiore a quello imposto dai vincoli.
+\subsubsection{Benchmark Kim}
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Unità Funzionale & Vincolo & LB & FD \\
+\hline
+indirect\_ref & inf & 1 & 2 \\
+MINUS & 2 & 2 & 1 \\
+PLUS & 2 & 2 & 2 \\
+READ\_COND & inf & 1 & 1 \\
+\hline
+\multicolumn{2}{|l|}{Tempo computazione} & 0.11 & 0.18 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Unità allocate per il benchmark Kim}
+\label{tab9}
+\end{table}
+Il risultato è da considerarsi positivo in quanto essendo indirect\_ref una pseudo-operazione, l'area occupata da un'unità funzionale che possa eseguirla è sensibilmente inferiore a quella occupata da un sottrattore.
+
+\newpage
+\subsubsection{Benchmark Maha}
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Unità Funzionale & Vincolo & LB & FD \\
+\hline
+CMP & 2 & 2 & 1 \\
+indirect\_ref & inf & 1 & 1 \\
+MINUS & 2 & 2 & 1 \\
+PLUS & 2 & 1 & 1 \\
+READ\_COND & inf & 2 & 1 \\
+\hline
+\multicolumn{2}{|l|}{Tempo computazione} & 0.14 & 0.12 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Unità allocate per il benchmark Maha}
+\label{tab10}
+\end{table}
+
+\subsection{Diminuzione delle unità funzionali non soggette a vincoli}
+In questa sezione sono riportati alcuni fra i benchmark per i quali il Force Directed scheduling ha ottenuto per alcuni tipi di risorse non vincolate l'allocazione di un numero di unità inferiore a quello determinato dal List-Based.
+
+\subsubsection{Benchmark Bandpass}
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Unità Funzionale & Vincolo & LB & FD \\
+\hline
+indirect\_ref & inf & 13 & 6 \\
+MINUS         &   2 &  2 & 2 \\
+MUL           &   1 &  1 & 1 \\
+PLUS          &   2 &  1 & 2 \\
+\hline
+\multicolumn{2}{|l|}{Tempo computazione} & 0.22 & 75.77 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Unità allocate per il benchmark Bandpass}
+\label{tab11}
+\end{table}
+
+\newpage
+\subsubsection{Benchmark Diffeq}
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Unità Funzionale & Vincolo & LB & FD \\
+\hline
+ASSIGN        & inf & 1 & 1 \\
+CMP           &   2 & 1 & 1 \\
+indirect\_ref & inf & 7 & 3 \\
+MINUS         &   2 & 1 & 1 \\
+MUL           &   1 & 1 & 1 \\
+PLUS          &   2 & 1 & 1 \\
+READ\_COND    & inf & 1 & 1 \\
+\hline
+\multicolumn{2}{|l|}{Tempo computazione} & 0.10 & 0.99 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Unità allocate per il benchmark Diffeq}
+\label{tab12}
+\end{table}
+
+\subsubsection{Benchmark Ewf\_v2}
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Unità Funzionale & Vincolo & LB & FD \\
+\hline
+indirect\_ref & inf & 11 & 5 \\
+MUL           &   1 &  1 & 1 \\
+PLUS          &   2 &  2 & 2 \\
+\hline
+\multicolumn{2}{|l|}{Tempo computazione} & 0.25 & 10.04 \\
+\hline
+\end{tabular}
+\end{center}
+\ccaption{Unità allocate per il benchmark Ewf\_v2}
+\label{tab13}
+\end{table}

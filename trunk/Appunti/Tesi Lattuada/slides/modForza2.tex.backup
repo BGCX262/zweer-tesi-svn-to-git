@@ -1,0 +1,8 @@
+\begin{slide}{Modifiche al Calcolo delle forze}
+\textbf{\underline{Modifica al peso delle forze di predecessori e successori} }\\
+\begin{itemize}
+\item Le forze di predecessori e successori sono approssimate;
+\item ad una forza negativa potrebbe corrispondere un falso miglioramento;
+\item \red modifica effettuata: \black si cerca di trascurare le forze di predecessori e successori negative diminuendone il peso.
+\end{itemize}
+\end{slide}

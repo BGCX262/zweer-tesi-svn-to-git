@@ -1,0 +1,11 @@
+\begin{slide}{Formula per il calcolo della forza}
+\begin{itemize}
+\item Il termine forza deriva dall'analogia con la legge di Hooke: \[F = -kx\]
+\item ad ogni coppia <operazione-passo di controllo> è assegnata una probabilità: $prob(o,s)=\frac{1}{mobilita'}$
+\item $FORCE(o,s) = self\_force(o,s) + pred\&succ\_force(o,s)$
+\item $self\_force(o,s) = force(o,s)$
+\item $pred\&succ\_force(o,s) = \sum_{q\epsilon pred(o)} force(q,s) + \sum_{q\epsilon succ(o)} force(q,s)$
+\item $force(o,s) = \sum_{p\epsilon wind(o)} contrib(o,p)$
+\item $contrib(o,p) = DG(type(o), p)\cdot \triangle prob(o,p)$
+\end{itemize}
+\end{slide}

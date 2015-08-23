@@ -1,0 +1,35 @@
+\chapter{Introduzione}
+\label{c:int}
+
+Servizi di e-commerce e di Internet Television (più brevemente \iptv) hanno in comune un grandissimo database, da poter offrire all'utente, di oggetti acquistabili nel caso di portali di e-commerce e di contenuti audiovisivi visualizzabili attraverso il Video on Demand (più brevemente \vod) per quanto riguarda le televisioni sul web. E se questa particolarità può sembrare un vantaggio, c'è anche un retro della medaglia, una faccia che questi provider si trovano a dover affrontare ogni giorno in modo sempre più disperato: informare l'utente dell'esistenza di questo enorme database, rendendone semplice la consultazione e la ricerca. Ma cerchiamo di capire meglio di cosa si sta parlando: nel caso si sia mai visitato un portale di e-commerce con l'intento di fare acquisti, si sarà poi notato che il sistema, una volta visualizzata la scheda di un oggetto, suggerisce altri oggetti che potrebbero interessare, in quanto ricercati o visualizzati da chi ha acquistato prima di noi. Senza troppi giri di parole questa è una semplice \grassetto{raccomandazione}, in quanto il sito ha in memoria lo storico dei suoi clienti e lo mette a nostra disposizione per consigliarci un ulteriore oggetto nella speranza che ci possa in qualche modo interessare.
+
+Similmente funziona l'\iptv. In questo caso però si ha a che fare con risorse audiovisive che quindi devono sottostare ai gusti dell'utente. del quale il sistema registra lo storico\nota{In seguito esamineremo meglio cosa si intende per "storico"} per poi suggerire la visione di un contenuto piuttosto che di un altro. Ma è proprio in questo momento che subentra l'ostacolo più grande, tipico proprio dei servizi di \iptv e \vod: il sistema di interfacciamento è infinitamente più semplice e meno funzionale di quello che si ha a disposizione quando l'utente si mette davanti al computer, ora è un semplice telecomando che ci permette di controllare il flusso di dati. Scorrere quindi attraverso pagine e pagine di contenuti può risultare lungo, ma soprattutto fastidioso per l'utente che desidera avere risultati veloci. 
+
+Da questa semplice panoramica è facilmente intuibile l'utilità dei \grassetto{sistemi di raccomandazione}: sono in grado di suggerire a real time un numero limitato ma incredibilmente specifico di contenuti altamente \corsivo{personalizzati}. Tutto ciò è ovviamente volto a rendere sempre più soddisfatto l'utente e, conseguentemente, incrementare le vendite dei prodotti.
+
+Un sistema di raccomandazione è in grado di consigliare determinati contenuti in base a:
+\begin{itemize}
+	\item il \corsivo{profilo utente}, ovvero le singole preferenze, espresse in modo più o meno esplicito;
+	\item le caratteristiche dei contenuti stessi (\corsivo{modello degli item}).
+\end{itemize}
+
+Il profilo utente è lo storico delle interazioni tra l'utente e i contenuti. Vengono memorizzate sia le visualizzazioni di un determinato oggetto del catalogo, sia la valutazione (avvenuta quindi in modo esplicito) che gli è stata attribuita. In questo modo si crea una sorta di ""carta di identità'' dell'utente.
+
+Il modello dei vari item riguarda le caratteristiche dei contenuti disponibili a catalogo. In base all'algoritmo scelto queste caratteristiche riguarderanno il contenuto dell'item oppure le preferenze indicate dalla comunità degli utenti. Nel primo caso parleremo di algoritmi \corsivo{Content-Based}, nel secondo di algoritmi \corsivo{Collaborativi}.
+
+Fine ultimo del sistema di raccomandazione è restituire una lista di N valori (per questo chiamata \grassetto{lista Top-N} in cui N solitamente è 10). Questa lista può essere anche filtrata in modo da controllarne la dinamicità in vari momenti.
+
+In questa tesi si vuole quindi creare una piattaforma in grado di utilizzare i sistemi di raccomandazione non solo per generare i suddetti ""consigli'', ma anche per valutarne la bontà attraverso opportuni test. Il tutto considerando che la tecnologia progredisce e nuovi algoritmi o metodi di test possono essere creati. Proprio per questo sono state studiate e verranno presentate alcune comode API per interfacciarsi ed estendere la piattaforma.
+
+Il lavoro è suddiviso in nove capitoli. \\
+Nel Capitolo due viene presentata una breve carrellata dei vari algoritmi utilizzati per le raccomandazioni e le tipologie di dati utilizzate da questi. Ci si soffermerà in particolar modo sulle basi della raccomandazione, in modo da capire poi il processo di reingegnerizzazione.
+
+Nel Capitolo tre saranno trattate le metodologie di test utilizzate, soffermandosi sui risultati che forniscono.
+
+Nel Capitolo quattro si illustrerà lo stato dell'applicazione prima della reingegnerizzazione, trattando in particolar modo la sua frammentazione sia dal punto di vista del codice, sia dal punto di vista dell'ideazione in modo da presentare meglio il problema che si è incontrato. Da qui la necessità di fermarsi nello sviluppo della piattaforma in modo da riorganizzare il lavoro.
+
+Nel Capitolo quinto si tratterà la reingegnerizzazione vera e propria del sistema, analizzandone la struttura ma soprattutto l'idea di fondo che ne permette l'estendibilità.
+
+Nel Capitolo sei si studierà la possibile integrazione in un sistema reale, mostrandone i vantaggi e anche dimostrando perché non possa considerarsi un qualcosa di assolutamente perfetto ed eterno.
+
+Nel Capitolo sette infine si tireranno le somme di quanto è stato studiato, analizzando i possibili sviluppi futuri che l'applicazione può avere.

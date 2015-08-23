@@ -1,0 +1,334 @@
+\chapter{Il Force Directed Scheduling proposto da Paulin e Knight}
+\label{c:ori}
+\thispagestyle{empty}
+
+\vspace{0.5cm}
+
+L'algoritmo del Force Directed scheduling fu presentato per la prima volta da Paulin e Knight in \cite{fd1} come nuovo componente del sistema ad approccio multiplo per la sintesi automatica denominato \emph{HAL} (\cite{hal}) e successivamente esteso in \cite{fd2}. Nella sua formulazione base il Force Directed è un algoritmo di scheduling a tempo vincolato (i vincoli temporali possono essere requisiti di progetto oppure essere calcolati tramite altri algoritmi come ASAP (\ref{c:art:sch:time:ASAP}), ALAP (\ref{c:art:sch:time:ALAP}) o List-Based (\ref{c:art:sch:time:lb})) che mira a minimizzare il numero di unità funzionali, bus e registri richiesti per implementare una certa funzionalità tramite il bilanciamento in ogni passo di controllo del numero di operazioni assegnate ad un certo tipo di risorsa. Il bilanciamento della distribuzione delle operazioni induce ovviamente l'uniformarsi dell'utilizzo delle unità funzionali nei diversi passi di controllo e conseguentemente riduce il picco massimo di richieste di un certo tipo di risorsa. Tale numero corrisponderà al numero di unità funzionali di quel tipo che sarà necessario allocare per implementare la funzionalità. L'algoritmo è iterativo e costruttivo: ad ogni iterazione un'operazione, sulla base delle procedure che verranno esposte in \ref{c:ori:core}, verrà assegnata ad un passo di controllo.
+
+Nella prima sezione verrà illustrata la prima versione dell'algoritmo che prevede la semplificazione che tutte le operazioni vengano eseguite in un tempo uguale e fissato che verrà identificato come durata del passo di controllo.
+
+Nella seconda sezione verrà invece mostrato come è possibile superare queste limitazioni e come introdurre informazioni relative alla tecnologia target all'interno dell'algoritmo.
+
+\section{L'algoritmo nella sua versione base}
+\label{c:ori:core}
+L'algoritmo del Force Directed scheduling si fonda sul concetto di forza da cui prende il nome. Ad ogni coppia <operazione-passo di controllo> viene associata una forza cioè un numero reale indice dell'effetto del scegliere quel particolare assegnamento <operazione-passo di controllo> sulla uniformità della distribuzione delle operazioni di qualsiasi tipo non solo in quel passo di controllo, ma in tutti i passi di controllo influenzati. Un valore positivo indica un aumento delle operazioni concorrenti per le stesse risorse e quindi un peggioramento della situazione rispetto a quella desiderata, un valore negativo invece indica una diminuzione della concorrenza e quindi un possibile ridursi delle unità funzionali richieste.
+
+Il metodo per calcolare questo valore prende spunto dalla legge di Hooke per i corpi elastici (molle): \begin{equation}
+F = -kx
+\end{equation}
+dove:
+\begin{description}
+\item[F] è la forza esercitata dalla molla che si oppone all'allungamento;
+\item[k] è la costante di Hooke;
+\item[x] è la distanza della quale viene allungata la molla.
+\end{description}
+
+\begin{figure}
+\begin{center}
+
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.40]{figures/Diagram15.pdf}
+}{
+\includegraphics[scale = 0.40]{figures/Diagram15.eps}
+}
+\hcaption[Esempio di interpretazione dell'algoritmo del Force Directed scheduling]{Esempio di interpretazione dell'algoritmo del Force Directed scheduling: i due quadrati ed il rettangolo contenenti il simbolo della somma rappresentano delle operazioni e la loro probabilità che siano assegnate ad un passo di controllo (maggiore è l'area, maggiore è la probabilità). La distanza fra 0 e DG(i) rappresenta la somma di probabilità per l'i-esimo passo di controllo: si ipotizza che le molle rappresentate nella parte destra abbiano costante di elasticità pari alle somme di probabilità dei rispettivi passi di controllo. Si ipotizza inoltre che tali molle si trovino in stato di compressione. Simbolicamente quindi le molle premono contro le operazioni cercando di uniformare il livello delle somme di probabilità per giungere ad uno stato stabile del sistema in cui le forze esercitate dalle singole molle siano uguali. Infatti la forza esercitata da una molla è tanto maggiore quanto maggiore è la somma di probabilità perchè maggiore è la sua costante elastica e la sua compressione. C'è da sottolineare tuttavia come a differenza di quelle reali, le molle utilizzate in questo esempio abbiano costante elastica variabile.}
+\label{f:molla}
+\end{center}
+\end{figure}
+
+
+L'idea è che venga assimilata ad una molla la somma delle probabilità delle operazioni relativa ad una coppia <passo di controllo-tipo di unità funzionale> cioè un numero non necessariamente intero che indichi il numero di operazioni di quel tipo che "probabilmente" verranno associate a quel passo di controllo (per rispettare i segni delle equazioni è più corretto dire che alla molla corrisponde il complemento rispetto ad un'ipotetica costante della somma di probabilità; come calcolare le funzioni di distribuzione della probabilità delle operazioni che sono necessarie per calcolare la somma e come ottenere la somma stessa verrà illustrato in \ref{c:ori:core:prob}. Questa quantità, proseguendo nell'analogia con i corpi elastici (confrontare figura \ref{f:molla}), esercita una forza nei confronti delle operazioni stesse che contribuiscono a formarla: la scelta di un assegnamento di un'operazione ad un passo di controllo comporterà la sua eliminazione da tutti i passi di controllo (con conseguente "allungamento" della molla e quindi insorgere di una forza negativa) tranne quello scelto in cui la somma di probabilità aumenterà (equivalentemente ad una "compressione della molla" e quindi ad una forza positiva). Sommando le forze dovute alle variazioni nei diversi passi di controllo si otterrà quindi un indice complessivo della variazione della concorrenza delle operazioni nel sistema. Una forza complessivamente negativa corrisponderà ad un allungamento medio delle molle e quindi alla diminuzione media delle somme di probabilità e quindi del numero medio di risorse necessarie nei diversi passi di controllo.
+
+\subsection{Calcolo delle somme di probabilità}
+\label{c:ori:core:prob}
+Alla base del calcolo delle somme di probabilità c'è la necessità di conoscere la distribuzione di probabilità nei vari passi di controllo relativa ad ogni operazione. Per ottenerle si consideri innanzitutto che non tutte le operazioni sono schedulabili in tutti i passi di controllo. Le dipendenze di dato e le dipendenze di controllo impongono che alcune operazioni possano venir eseguite solo a condizione che quelle da cui esse dipendono siano concluse (a meno di considerare ipotesi speculative). Nei passi di controllo in cui è impossibile assegnare un'operazione non esistendo alcuno scheduling comprendente quell'assegnamento che possa soddisfare tutti i vincoli di dipendenza poniamo pari a zero la probabilità che quella operazione vi venga schedulata. Poichè a priori non disponiamo di alcuna altra informazione sulle probabilità nei diversi passi di controllo è bene utilizzare come distribuzione di probabilità quella che statisticamente minimizza l'errore di approssimazione nel caso di nessuna informazione: la distribuzione uniforme. Detto mobilità il numero di passi di controllo in cui è possibile schedulare un'operazione, alla sua probabilità di venir assegnata in uno particolare di questi passi verrà attribuito il valore di $\frac{1}{mobilita'}$.
+
+Rimane il problema di individuare in quali passi di controllo è possibile schedulare una certa operazione (denominati finestra temporale di un'operazione) e quindi la mobilità. La soluzione a ciò è offerta dagli algoritmi ASAP e ALAP: il primo fornisce infatti il primo passo di controllo in cui una certa operazione può essere schedulata, il secondo fornisce l'ultimo passo. Inoltre questi algoritmi calcolano in modo ottimale il numero di passi di controllo minimo necessario per eseguire tutte le operazioni rispettando i vincoli di dipendenza. Questo valore è anche quello che assume per il suo calcolo l'algoritmo del Force Directed scheduling base.
+
+Una volta ottenuta le probabilità che le singole operazioni possano essere schedulate in un certo passo di controllo è necessario ricavare la somma di questi valori. Queste somme danno un indice del numero di unità funzionali che in quel dato di controllo probabilmente saranno utilizzate. Al di là dell'aspetto intuitivo di questa corrispondenza, viene qui presentata una giustificazione matematica non presente in \cite{fd1} e \cite{fd2}. Considerato un passo di controllo fissato e un tipo di operazione fissato, per ognuna delle operazioni di quel tipo schedulabili in quel passo di controllo viene creata una variabile aleatoria discreta $X_i$ che può assumere valore $0$ (l'operazione non viene schedulata in quel passo di controllo) o $1$ (l'operazione viene assegnata a quel passo di controllo). Tale variabile casuale sarà evidentemente una Bernoulliana di parametro pari alla probabilità che tale operazione venga schedulata in quel passo. Al fine dei calcoli si può ipotizzare che le variabili siano tutte indipendenti (semplificazione insita nell'algoritmo stesso, ma non corrispondente alla realtà in quanto le probabilità che un'operazione venga schedulata in un certo passo dipende sì solo dalla sua mobilità, ma potrebbero esistere dipendenze fra le mobilità delle operazioni schedulabili contemporaneamente: per esempio un'operazione potrebbe dipendere dall'altra). Si consideri infine un'ulteriore variabile aleatoria $Z$ che modellizzi il numero di operazioni del tipo fissato schedulate in quel passo di controllo. Si avrà quindi (nel caso di assenza di costrutti condizionali):
+\begin{equation}
+Z = \sum_i X_i
+\end{equation}
+con gli $X_i$ che possono assumere valore 0 o 1. La media di questa variabile sarà
+\begin{align*}
+\mathds{E} [Z] & = \mathds{E}[\sum_i X_i] \\
+\intertext{essendo le variabili indipendenti si può invertire l'operatore $\sum$ con $\mathds{E}$}
+\mathds{E}[Z] & = \sum_i \mathds{E}[X_i] \\
+\intertext{ma $\mathds{E}[X_i] = p _i$ dove $p_i$ è il parametro della bernouliana cioè la probabilità dell'operazione}
+\mathds{E}[Z] & = \sum_i p_i = DG(c)
+\end{align*}
+Con DG(c) si indica la somma di probabilità nel passo \emph{c} delle operazioni del tipo fissato.
+
+In questo modo è stata dimostrata la stretta corrispondenza fra le somme di probabilità e l'utilizzo di un determinato tipo di unità funzionale. La somma di probabilità non può limitarsi però ad una mera somma algebrica proprio perchè il risultato finale dovrà essere un indice di quante unità funzionali di un certo tipo verranno probabilmente utilizzate in un determinato passo di controllo. Nel caso la funzionalità originaria che si voglia schedulare presenti al suo interno dei costrutti di controllo (come ad esempio degli IF, WHILE, etc.) è non solo possibile ma probabile che esistano una o più coppie (o combinazioni di numero maggiore) di operazioni in mutua esclusione reciproca, tali cioè che solo una di esse debba essere eseguita all'interno di una singola traccia di esecuzione della funzionalità. Pertanto è impossibile che esse richiedano simultaneamente l'utilizzo di una particolare unità funzionale, quindi per calcolare il numero di unità funzionali probabilmente occupate non è significativo sommare le probabilità delle singole operazioni, ma è necessario tenere in considerazione queste possibilità. Una prima approssimazione suggerirebbe di utilizzare la media delle probabilità delle operazioni in mutua esclusione, ma poichè lo scopo finale dell'algoritmo è comunque quello di minimizzare il massimo utilizzo di una certa unità funzionale, viene preso in esame il valore massimo fra di esse. Queste considerazioni relative a singole operazioni si estendono immediatamente in caso di situazioni più complesse con presenza di basic block in mutua esclusione. In questo caso si calcola la somma di probabilità relativa ai singoli blocchi basici sommando le probabilità delle operazioni appartenenti ad essi come se il blocco basico rappresentasse una macro-operazione ottenuta fondendo le singole operazioni. Tale macro-operazione potrà avere probabilità anche maggiore di uno potendo occupare più unità funzionali poichè è il risultato della fusione di diverse operazioni elementari. Una volta eliminati ai fini del calcolo i blocchi basici dominati a livello di probabilità da blocchi basici con probabilità totale maggiore è possibile ottenere il valore finale desiderato sommando le probabilità delle operazioni rimaste. Gruppi di operazioni appartenenti a rami di costrutti condizionali, ma che non siano in mutua esclusione con alcuna altra operazione dello stesso tipo vanno considerati al fine del calcolo come eseguite in ogni traccia di esecuzione.
+
+\subsection{Calcolo delle Forze}
+\label{c:ori:core:force}
+Una volta calcolate le somme delle probabilità è possibile calcolare le forze che stanno alla base dell'algoritmo di scheduling. Si calcola una forza per ogni coppia <operazione-passo di controllo possibile> (gli scheduling possibili come è stato evidenziato sono quelli calcolati dagli algoritmi ASAP - ALAP). Il valore di ogni forza si calcola sommando due diversi contributi, il primo detto \mbox{\emph{self-force}} (autoforza) che si riferisce agli effetti dello scheduling dell'operazione in oggetto, il secondo detto \emph{predecessors' and successors' force} (forza di predecessori e successori) che tiene conto della restrizione della finestre temporali dei predecessori (predecessori nel SDG cioè quelle operazioni da cui quella considerata dipende) e dei successori (successori nel SDG cioè quelle operazioni che dipendono da quella considerata) dell'operazione esaminata. Infatti uno scheduling equivale a restringere ad uno la mobilità di un'operazione, riduzione che può causare la restrizione della mobilità di altre operazioni. Un assegnamento quindi può causare non solo la modifica delle somme di probabilità relative all'unità funzionale che esegue quella operazione e relative a quei passi di controllo interessati dall'operazione, ma anche di altri passi di controllo e di altre unità funzionali. Come già anticipato la funzione utilizzata per calcolare le forze ricalca la legge di Hooke:
+\begin{equation}
+Force(i) = DG(i) \cdot x(i)
+\end{equation}
+dove 
+\begin{description}
+\item[Force(i)] è il contributo alla forza dello scheduling relativo all'i-esimo passo di controllo;
+\item[DG(i)] è la somma di probabilità del tipo di unità funzionale che può eseguire l'operazione nell'i-esimo passo di controllo;
+\item[x(i)] è la variazione della probabilità dell'operazione nell'i-esimo passo di controllo a seguito dello scheduling.
+\end{description}
+
+Questa formula permette di calcolare il contributo alla forza relativo ad un passo di controllo dell'assegnamento. La \emph{self-force} complessiva è pari alla somma dei contributi relativi ai singoli passi di controllo. Ovviamente tali contribuiti saranno pari a zero per i passi di controllo nei quali non è possibile schedulare l'operazione perchè il terzo termine della formula sarà nullo. La variazione della probabilità dell'operazione è facilmente calcolabile in $-\frac{1}{mobilita'}$ per tutti i passi di controllo dove l'istruzione era schedulabile ad eccezione di quello dell'assegnamento che sarà pari a $+\frac{mobilita'-1}{mobilita'}$. Una possibile diversa interpretazione del terzo termine della formula e quindi del calcolo della forza verrà illustrata in \ref{c:my:var:force}. La \emph{self-force} complessiva sarà positiva nel caso il passo di controllo dell'assegnamento abbia somma di probabilità mediamente superiore alle altre, negativa in caso contrario.
+
+Allo stesso modo è possibile calcolare la \emph{predecessors' and successors' force}: per ogni predecessore e successore la cui mobilità è modificata dal possibile scheduling si applica la formula utilizzata per il calcolo della \emph{self-force} tenendo in considerazione le variazioni delle probabilità delle operazioni dovute alla restrizione della mobilità. A differenza del caso del calcolo della \emph{self-force} la nuova mobilità di un'operazione può essere maggiore di uno, quindi la formula per la modifica della probabilità illustrata precedentemente può non valere. Le singole forze così ottenute vengono sommate per dare origine alla \emph{predecessors' and successors' force}. Va sottolineato come il calcolo delle forze di predecessori e successori avvenga singolarmente e non considerando complessivamente gli effetti della restrizione della mobilità di istruzioni contemporanee. Facendo riferimento all'analogia con la fisica descritta in \ref{c:ori:core} è come se si considerasse valido nel problema del calcolo delle forze il principio di sovrapposizione degli effetti. In realtà questa è solo una semplificazione introdotta dall'algoritmo perchè non corrisponde alla situazione reale del problema. Infatti bisognerebbe considerare che, dato lo scheduling di un'operazione avente più predecessori che subiscono una restrizione della mobilità a seguito dell'assegnamento stesso, si può notare nell'esempio riportato nella figura \ref{f:ex} come per calcolare la forza relativa a ciascun predecessore sarebbe più corretto considerare l'effetto causato dalla restrizione della mobilità degli altri predecessori a lui contemporanei in quanto questa restrizione modifica la somma di probabilità e quindi anche la forza. Infatti se si analizza la tabella riportata in \ref{f:ex:tab} riferendosi in particolare alle forze dell'operazione \emph{-5} si può notare come la forza relativa allo scheduling nel passo di controllo 1 sia nettamente negativa. Infatti questo scheduling, la cui \emph{self-force} è 0 perchè i due passi in cui è possibile schedulare l'operazione hanno la stessa somma di probabilità, comporta la riduzione del frame delle operazione \emph{+2}, \emph{+3} e \emph{+4} da [0 1] a [0 0] con un contributo di forza negativo poichè la somma di probabilità iniziale relativa all'operazione di somma nel passo 1 è superiore a quella del passo 0. Apparentemente quindi lo scheduling spinge queste tre operazioni in un passo di controllo mediamente meno congestionato come ci si aspetta che faccia l'algoritmo. Tuttavia è facile notare che lo scheduling contemporaneo delle tre istruzioni al primo passo di controllo non costituisce la soluzione ottimale al problema di scheduling presentato. Confrontando lo scheduling ottenuto dall'applicazione dell'algoritmo in \ref{f:ex:fd} con quello costruito manualmente in \ref{f:ex:hand} si può notare come la soluzione ottimale utilizzi due sommatori contro i tre calcolati dal Force Directed. Un possibile modo per ovviare a questa limitazione della formulazione originaria dell'algoritmo verrà presentato in \ref{c:my:var:corr}.
+
+\begin{figure}
+\begin{center}
+\subfigure[DFG di esempio]{
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.22]{figures/Diagram1.pdf}
+}{
+\includegraphics[scale = 0.22]{figures/Diagram1.eps}
+}
+}
+}
+\subfigure[Distribuzione di probabilità e somma di probabilità]{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.2]{figures/Diagram2.pdf}
+}{
+\includegraphics[scale = 0.2]{figures/Diagram2.eps}
+}
+}
+\end{center}
+\begin{center}
+\subfigure[Tabella delle forze delle operazioni da schedulare \newline SF = self force \newline OF = predecessors' and successors' force \newline TF = total force]{
+\label{f:ex:tab}
+\begin{tabular}{|l|r||r|r|r|}
+\hline 
+Op & CS & SF & OF & TF \\
+\hline
+\hline
++2 & 0 & -0.50 & 0 & -0.50 \\
+\hline
++2 & 1 & +0.50 & 0 & +0.50 \\
+\hline
++3 & 0 & -0.50 & 0 & -0.50 \\
+\hline
++3 & 1 & +0.50 & 0 & +0.50 \\
+\hline
++4 & 0 & -0.50 & 0 & -0.50 \\
+\hline
++4 & 1 & +0.50 & 0 & +0.50 \\
+\hline
+-5 & 1 & 0 & -1.50 & -1.50 \\
+\hline
+-5 & 2 & 0 & 0 & -0 \\
+\hline
+\end{tabular}
+}
+\end{center}
+\begin{center}
+
+\subfigure[Scheduling calcolato dall'Algoritmo Force Directed]{
+\label{f:ex:fd}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.2]{figures/Diagram3.pdf}
+}{
+\includegraphics[scale = 0.2]{figures/Diagram3.eps}
+}
+}
+}
+\subfigure[Scheduling con risorse minime]{
+\label{f:ex:hand}
+\fbox{
+\ifthenelse{\boolean{pdf}}
+{
+\includegraphics[scale = 0.2]{figures/Diagram4.pdf}
+}{
+\includegraphics[scale = 0.2]{figures/Diagram4.eps}
+}
+}
+}
+\end{center}
+\hcaption{Esempio delle limitazioni insite nel calcolo delle \emph{successors' and predecessors' forces}}
+
+\label{f:ex}
+\end{figure}
+
+
+\subsection{Corpo dell'algoritmo}
+\label{c:ori:core:body}
+Dopo aver mostrato le singole fasi dell'algoritmo, è ora possibile illustrarlo nella sua completezza. L'algoritmo è iterativo ed ad ogni iterazione un'operazione viene assegnata ad un passo di controllo. Il numero massimo di iterazioni quindi è pari al numero di operazioni, ma può essere minore perchè è possibile assegnare in qualsiasi momento un'operazione che abbia mobilità unitaria.
+
+I passi da compiere ad ogni iterazione sono:
+\begin{enumerate}
+\item calcolare la finestra temporale delle operazioni tramite l'utilizzo di ASAP e ALAP e derivare da questa la loro mobilità e quindi le distribuzioni di probabilità;
+\item aggiornare le somme di probabilità;
+\item calcolare le \emph{self-forces} per ogni assegnamento <operazione-passo di controllo> possibile;
+\item aggiungere alle \emph{self-forces} le forze di predecessori e successori;
+\item scegliere la coppia <operazione-passo di controllo> avente forza minore: aggiungere l'assegnamento allo scheduling.
+\end{enumerate}
+
+
+\subsection{Considerazioni sulla complessità}
+\label{c:ori:core:compl}
+Viene ora analizzata la complessità dell'algoritmo, considerando il caso pessimo, ricalcando quanto riportato in \cite{fd1} con alcune considerazioni ulteriori; con \emph{n} è indicato il numero di operazioni del problema, con \emph{c} il numero di passi di controllo previsto:
+\begin{enumerate}
+\item ad ogni iterazione dell'algoritmo almeno un'operazione viene schedulata (tipicamente più di una, ma si sta considerando il caso peggiore); il numero massimo di iterazioni dell'algoritmo è quindi pari ad \emph{n};
+\item ad ogni iterazione vengono calcolate le forze di massimo \emph{n} operazioni;
+\item per ognuna delle operazioni si devono calcolare \emph{h} forze dove \emph{h} è la mobilità delle operazioni; nel caso peggiore la mobilità corrisponde al numero totale di passi di controllo quindi \emph{h} = \emph{c};
+\item Per calcolare una forza è necessario calcolare le forze relative a tutti i predecessori e successori che nel caso peggiore sono pari a \emph{n-1}; una considerazione non presente nell'analisi formulata da Paulin e Knight: per calcolare la forza relativa ad un predecessore o un successore si devono sommare i contribuiti relativi a ciascuno dei passi di controllo in cui l'operazione è schedulabile; quindi ricalcando le considerazione fatte nel passo precedente la complessità va aumentata di un ulteriore fattore pari a \emph{c}.
+\end{enumerate}
+
+Da queste considerazioni si ricava che la complessità dell'algoritmo è pari a $O(c^2 n^3)$. Tuttavia in questi calcoli non è stata considerata la possibilità dell'esistenza di costrutti condizionali. In questo caso come illustrato in \ref{c:ori:core:prob} è necessario calcolare le somme di probabilità considerando le reciproche mutue esclusioni. Questi calcoli devono essere ripetuti ad ogni iterazione per ogni passo di controllo. Affinchè il tempo per individuare il valore di queste somme sia trascurabile al fine di calcolare la complessità dell'algoritmo è necessario che tali calcoli abbiano complessità inferiore a $O(c n^2)$, tuttavia ne in \cite{fd1} ne in \cite{fd2} è riportato un metodo rapido con cui effettuarli. Un metodo verrà illustrato in \ref{c:impl:force:prob} avente complessità pari a $O(b^4)$ ove \emph{b} è il numero di blocchi basici del problema.
+
+Esistono delle semplificazioni all'algoritmo che comportano una riduzione della complessità:
+\begin{itemize}
+\item limitare la mobilità delle istruzioni ad un valore prefissato, ad esempio a 10 passi di controllo; la finestra temporale sarà centrata sul centro della finestra originaria; il tempo necessario ad effettuare la riduzione, che deve essere effettuata ad ogni iterazione, è $O(c n)$ quindi trascurabile rispetto alla complessità del corpo dell'iterazione; nella complessità propria dell'intero algoritmo quindi si può sostituire al termine \emph{c} il termine \emph{H} pari alla costante scelta come valore prefissato; la complessità si riduce quindi a $O(H^2 n^3)$ ove H è fissato e minore di \emph{c};
+
+\item utilizzare un modo diverso per valutare le \emph{predecessors' and successors' forces}; in particolare i tre tipi di forze sono calcolate in tre fasi successive; nella prima fase vengono calcolate e memorizzate tutte le \emph{self-forces}; nella seconda fase il SDG è attraversato dall'inizio alla fine e per ciascuna operazione la forza memorizzata è posta uguale alla propria \emph{self-force} sommata a quella dei predecessori; infine con una terza passata, questa volta dal basso verso l'alto, vengono sommate anche le forze dei successori; la complessità complessiva scenderebbe secondo quanto riportato in \cite{fd1} a $O(c n^2)$, se si trascura la somma delle forze di predecessori e successori; infatti non trascurando questo aspetto, la complessità si può calcolare come: \emph{n} iterazioni per \emph{n} operazioni per \emph{c} passi di controllo per \emph{$\log{cn}$} somme di forze di predecessori e successori per un totale di $O(c n^2 \log{cn})$ ; applicando la semplificazione del punto precedente si ottiene $O(H n^2 \log{Hn})$ con \emph{H} costante.
+\end{itemize}
+
+
+\section{Estensioni all'algoritmo proposte da Paulin e Knight}
+\label{c:ori:longcore}
+Sin dalla presentazione dell'algoritmo, Paulin e Knight illustrarono una serie di estensioni dell'algoritmo (oltre a quelle presentate in \ref{c:ori:core:compl} per ridurre la complessità) per introdurre costrutti ciclici, per estendere le finalità dell'algoritmo, per eliminare alcune delle limitazioni della versione base e per tentare di incorporare tecniche di \emph{look-ahead}.
+
+\subsection{Scheduling con cicli}
+\label{c:ori:longcore:cycle}
+L'algoritmo descritto fino a questo momento è in grado di gestire tra i costrutti di controllo solo quelli di tipo condizionale. L'estensione che comprende la gestione dei costrutti iterativi (gestione dei cicli) parte dall'assunzione che nella descrizione comportamentale del sistema ad ogni ciclo venga assegnato un vincolo relativo alla durata temporale di una sua iterazione o al numero di unità funzionali allocabili per la sua esecuzione. Nel primo caso il corpo del ciclo verrà schedulato separatamente utilizzando la versione base dell'algoritmo, nel secondo verrà invece utilizzato il \emph{force-directed list scheduling} (\ref{c:ori:longcore:vincoli}).
+
+Nel caso di più cicli annidati, le operazioni relative a quello più interno verranno schedulate per prime, quindi il ciclo stesso ed in particolare una sua iterazione verrà considerata come un'unica operazione avente tempo di esecuzione pari alla durata di un'iterazione. Le operazioni esterne al ciclo non potranno essere schedulate contemporaneamente all'operazione rappresentante il ciclo intero. Questo processo è ripetuto per tutti i cicli finchè viene schedulato quello più esterno.
+
+Per cercare di forzare il pipelining fra le diverse iterazioni del ciclo ed estrarre quindi un maggior parallelismo è possibile invece di schedulare le operazioni della singola iterazione, replicare tali operazioni un numero di volte pari al numero di iterazioni che si vuole vengano eseguite parallelamente. Una volta fatto ciò è sufficiente applicare l'algoritmo classico del Force Directed scheduling sulle operazioni originali e su quelle ottenute tramite la replicazione considerando oltre alle dipendenze originarie quelle presenti fra le operazioni appartenenti a iterazioni diverse.
+
+\subsection{Estensioni allo scopo dell'algoritmo}
+Lo scopo primario dell'algoritmo è quello di minimizzare l'utilizzo delle unità funzionali utilizzate; tuttavia è facilmente utilizzabile per minimizzare altri tipi di risorse oltre alle unità funzionali.
+
+\subsubsection{Minimizzazione dei costi relativi ai bus}
+Uno degli elementi che è possibile minimizzare utilizzando questo algoritmo sono i costi relativi ai bus all'interno dell'architettura sintetizzata. Schedulare un'operazione in un passo di controllo implica anche assegnare per quel passo di controllo un trasferimento di dati fra l'unità funzionale e un registro (memorizzazione del risultato dell'operazione) e almeno un trasferimento da registro ad unità funzionale (caricamento dei dati dell'operazione). Il numero minimo di interconnessioni necessario per sintetizzare uno scheduling sarà pari al massimo numero di trasferimenti presenti in un passo di controllo. Si può modellizzare l'utilizzo di un'interconnessione come l'utilizzo di un nuovo tipo di unità funzionale. Per calcolare la probabilità di questo tipo di "operazioni" in un passo di controllo è sufficiente considerare la probabilità di ciascuna operazione di qualsiasi tipo in quel passo di controllo moltiplicata per il numero di interconnessioni distinte per quel tipo di operazione. Quindi per ottenere le somme di probabilità per le interconnessioni è sufficiente applicare la formula:
+\begin{equation}
+Com\_DG(i) = \sum_{TypeOp} (DG(i,TypeOp) \cdot NofCon(TypeOp))
+\end{equation}
+ove
+\begin{description}
+\item[TypeOp] è il tipo di operazione;
+\item[DG(i, TypeOp)] è la somma di probabilità dell'i-esimo passo di controllo dell'operazione di tipo \emph{TypeOp};
+\item[NofCon(TypeOp)] è il numero di connessioni dell'unità funzionale che esegue le operazioni di tipo \emph{TypeOp}.
+\end{description}
+
+Nel calcolo delle \emph{self-forces} e delle \emph{predecessors' and successors' forces} bisognerà quindi aggiungere anche le forze relative alle connessioni calcolate allo stesso modo di quelle delle altre operazioni. In questo modo l'algoritmo tenderà a minimizzare sia l'utilizzo di unità funzionali, sia l'utilizzo delle connessioni. Se si vuole minimizzare solo il costo delle connessioni sarà sufficiente considerare solo le forze relative alle interconnessioni e trascurare le altre.
+
+\subsubsection{Minimizzazione dei costi relativi ai registri}
+Un secondo parametro che l'algoritmo può minimizzare all'interno dell'architettura è il costo totale dei registri che è pari al loro numero, il quale a sua volta corrisponde al numero massimo di archi di dipendenza dato che attraversano quella linea immaginaria che separa due diversi control step nel SDG schedulato. L'algoritmo applicato a questo problema non solo cerca di minimizzare l'utilizzo dei registri, ma fornisce anche ad ogni iterazione una stima del limite inferiore del numero di registri che sono necessari.
+
+Anche in questa versione dell'algoritmo viene creato un nuovo tipo di operazioni che verrà chiamato \emph{operazione di memorizzazione}: ad ogni operazione che produce un risultato utilizzato da altre operazioni si associa una nuova operazione di tipo memorizzazione indipendentemente dal numero di operazioni che utilizzeranno tale risultato. Tale operazione rappresenta l'esistenza di una variabile in quel determinato passo di controllo. Come costruire la distribuzione di probabilità di questo tipo di operazioni fittizie è tuttavia più complesso di quelle reali o di quelle create nel caso precedente. Nel caso sia l'operazione a monte, sia tutte le operazioni a valle siano state schedulate la distribuzione di probabilità (in questo caso è improprio parlare di distribuzione di probabilità perchè la somma dei diversi valori può essere superiore a uno, ma per affinità si continuerà a chiamarla con questo termine) avrà valore unitario nei passi di controllo compresi fra quello dell'operazione che produce il dato escluso a quello dell'ultima operazione che lo utilizza incluso (cioè si modellizza che i registri, che nella pratica vengono utilizzati nel passaggio fra due passi di controllo, vengano utilizzati nel secondo passo di controllo della coppia a cavallo del passaggio). Negli altri passi di controllo la distribuzione di probabilità varrà 0. Se una o più delle operazioni che individuano il tempo di vita della variabile associata all'operazione di memorizzazione non è schedulata, la creazione della distribuzione di probabilità risulta più complessa, perchè a priori non si conosce quale sarà l'ultima operazione ad utilizzare il dato. Si stima quindi la vita media del dato utilizzando questa formula:
+\begin{equation}
+Tempo di Vita Medio = \frac{Asap + Alap + max}{3}
+\end{equation}
+dove 
+\begin{itemize}
+\item \emph{ASAP} è il tempo di vita della variabile nello scheduling ASAP;
+\item \emph{ALAP} è il tempo di vita della variabile nello scheduling ALAP;
+\item \emph{max} è il tempo di vita massimo calcolabile combinando $ASAP_{begin}$(inizio del tempo di vita nell'ASAP) e $ALAP_{end}$(fine del tempo di vita nell'ALAP) come $max=ALAP_{end} - ASAP_{begin} + 1$.
+\end{itemize}
+
+A questo punto i dati raccolti possono aver portato a due diverse situazioni:
+\begin{enumerate}
+\item i tempi di vita forniti da ALAP e ASAP sono disgiunti cioè $ASAP_{end} < ALAP_{begin}$;
+\item i tempi di vita forniti da ALAP e ASAP si sovrappongono almeno parzialmente.
+\end{enumerate}
+
+Nel primo caso la distribuzione di probabilità dell'operazione di assegnamento varrà $\frac{Tempo di Vita Medio}{max}$ nei passi di controllo compresi fra $ASAP_{begin}$ e $ALAP_{end}$, estremi inclusi e 0 negli altri passi di controllo. Nel secondo caso il sovrapporsi di passi di controllo in cui sia per l'ASAP che per l'ALAP una certa variabile sarà viva è indice del fatto che sicuramente con qualsiasi scheduling in quel passo di controllo la variabile sarà viva e quindi in quel passo la distribuzione di probabilità dovrà valere uno. Inoltre questi dati forniscono un'ulteriore informazione: per quel passo di controllo sicuramente quella variabile sarà viva, quindi sarà necessario un registro per memorizzarla ed in questo modo si è ottenuto un'informazione riguardo il numero minimo di registri necessari, anche se magari nessuna operazione è stata ancora schedulata. Negli altri passi di controllo compresi fra $ASAP_{begin}$ e $ALAP_{end}$ ma non facenti parte della sovrapposizione, la distribuzione di probabilità varrà $\frac{Tempo di Vita Medio - lunghezza della sovrapposizione}{max - lunghezza della sovrapposizione}$. Dalle distribuzioni di probabilità si ricavano poi le somme di distribuzioni di probabilità; a questo punto nel calcolo delle singole forze oltre al contributo delle \emph{self-forces} e delle \emph{predecessors' and successors' forces} delle operazioni canoniche, bisognerà tenere in considerazioni il contributo delle \emph{predecessors' and successors' forces} relative alle operazioni fittizie di memorizzazione utilizzando la formula canonica.
+
+\subsection{Integrazione di informazioni relative all'architettura}
+\label{c:ori:longcore:arch}
+E' possibile sfruttare alcune informazioni relative all'architettura target per indirizzare l'algoritmo di scheduling. Il Force Directed è un algoritmo il cui scopo è minimizzare il numero di risorse utilizzate. In generale l'algoritmo non discrimina un tipo di unità funzionale rispetto ad un altro, ma tende a minimizzare in maniera uniforme il numero di operazioni dei diversi tipi. Tuttavia il costo di allocazione delle unità funzionali può variare sensibilmente a seconda delle funzionalità implementate. Quindi può essere opportuno cercare di favorire la minimizzazione delle risorse più costose a scapito di quelle economiche. Un modo semplice ed efficace per indirizzare l'algoritmo di scheduling in questa direzione rendendo più critiche le operazioni più costose è moltiplicare le somme di probabilità per un fattore indice del costo del particolare tipo di unità. In questo modo l'algoritmo sarà portato a cercare di schedulare prima le operazioni relative a unità funzionali con costo maggiore e quindi minimizzare con maggiore efficacia l'occupazione delle risorse più costose.
+
+Una seconda informazione che è non solo possibile ma fortemente consigliato utilizzare all'interno del Force Directed per ottenere risultati migliori è quella relativa alla presenza di unità funzionali che possono compiere diversi tipi di operazione come ad esempio le ALU. Per inserire questa informazione all'interno dei dati dell'algoritmo è sufficiente utilizzare in ogni passo di controllo al posto di una somma di probabilità per ciascun tipo di operazione eseguibile dall'unità multifunzionale un'unica somma che tenga conto delle probabilità di tutte le operazioni assegnate a quel tipo di risorsa. Per ottenere questo valore non è sufficiente sommare le somme di probabilità relative ai singoli tipi di operazione assegnati a quell'unità funzionale: in questo modo infatti non si terrebbe conto della possibilità che esistano mutue esclusioni fra le operazioni appartenenti alle diverse somme che portano ad un calcolo differente della somma di probabilità come illustrato in \ref{c:ori:core:prob}; il metodo corretto per calcolare la somma di probabilità relativa a unità multifunzonali è invece sostituire tutte le operazioni assegnate a quel tipo di risorsa con un unico nuovo tipo fittizio, che per esempio potrebbe essere chiamato con il nome stesso del tipo di unità, e proseguire nell'applicazione dell'algoritmo con i soliti passi. Questa semplificazione si può attuare però a condizione che:
+\begin{itemize}
+\item nel caso si stia minimizzando il costo dei bus, le operazioni afferenti alla stesso tipo di unità funzionale abbiano un numero uguale di ingressi;
+\item le operazioni abbiano tempo di esecuzione e tempo di set-up relativo (confrontare quanto verrà esposto in \ref{c:ori:longcore:relax}) uguale tra loro.
+\end{itemize}
+In caso contrario non è possibile applicare la sostituzione e sarà necessario calcolare la somma di probabilità dell'unità funzionale multipla utilizzando le operazioni originarie e tenendone quindi in conto le caratteristiche.
+
+\subsection{Rilassamento di alcune condizioni per l'applicazione dell'algoritmo}
+\label{c:ori:longcore:relax}
+Nella prima descrizione dell'algoritmo (\ref{c:ori:core}) si è posto come limitazione che tutte le operazioni venissero eseguite in un unico ed intero passo di controllo. Questa restrizione è tuttavia superabile ed in particolare l'algoritmo del Force Directed può considerare l'esistenza di operazioni concatenate (coppia o numero maggiore di operazioni eseguibili in sequenza all'interno del periodo di un passo di controllo e legate da dipendenze di dato), operazioni multiciclo (operazioni che necessitano di più passi di controllo per essere eseguite e che durante tutti i passi di controllo rendono indisponibile la risorsa) e operazioni eseguite da unità funzionali pipeline.
+
+\subsubsection{Scheduling con Chaining}
+Per permettere scheduling con chaining verrà aumentata la mobilità calcolata con ASAP e ALAP: l'ASAP verrà anticipato di uno o più passi di controllo se è possibile concatenare l'operazione in oggetto con una o più delle operazioni precedenti e simmetricamente l'ALAP verrà posticipato di uno o di più passi di controllo se è possibile concatenare l'operazione in oggetto con una o più successive. Per determinare se ci sono delle operazioni concatenabili si associa ad ogni operazione la sua latenza, quindi si esegue l'ASAP memorizzando per ogni operazione la somma delle latenze del percorso critico precedente quell'operazione (in pratica all'ASAP basato sui passi di controllo si affianca l'ASAP basato sui tempi di esecuzione). Confrontando l'ASAP di un'operazione basato sui tempi di esecuzione sommato al tempo di esecuzione proprio dell'operazione (per così dire l'ASAP del termine e non dell'inizio dell'operazione) con gli ASAP temporali dei predecessori, se la differenza di questi valore è inferiore alla durata del priodo di un passo di controllo allora questa coppia di operazioni, e quelle eventualmente comprese fra di esse nel SDG, possono essere concatenate cioè schedulate nello stesso passo di controllo.
+
+\subsubsection{Scheduling di operazioni multiciclo}
+Così come il Force Directed prevede la possibilità del concatenamento delle operazioni, esso prevede anche la possibilità di schedulare operazioni che richiedano più di un passo di controllo per essere eseguite (operazioni multiciclo). Le modifiche da applicare all'algoritmo sono:
+\begin{itemize}
+\item Calcolo della mobilità
+
+Le uniche differenze che si deve tenere in conto nel calcolo della mobilità sono quelle previste negli algoritmi ASAP e ALAP considerando anche operazioni con latenza superiore al singolo passo di controllo; tuttavia è possibile combinare questa caratteristica con quella della concatenazione delle operazioni; le catene di operazioni concatenate in questo caso potranno occupare più di un passo di controllo, ma per semplificare le strutture di controllo e il calcolo dell'utilizzo delle unità funzionali si considera solo il caso in cui per schedulare la catena di operazioni sia necessario un numero di passi di controllo comunque pari a quello necessario a schedulare l'operazione più lunga della catena; cioè data un'operazione con tempo di esecuzione superiore a quello del ciclo di controllo, ma che non è multiplo della durata del ciclo stesso, si cercherà di concatenare ad essa una o più operazioni per eventualmente sfruttare il tempo rimanente a disposizione nel primo o nell'ultimo o in entrambi i passi di controllo dello scheduling dell'operazione lunga; l'utilizzo della concatenazione deve comunque essere considerato come una possibilità da valutare e non come un'imposizione in quanto scopo dell'algoritmo è la minimizzazione delle risorse e non del tempo totale di esecuzione e la concatenazione non necessariamente riduce il numero di risorse necessarie.
+
+\item Calcolo delle distribuzioni di probabilità
+
+Così come nel caso dei registri, anche la distribuzione di probabilità di operazioni multiciclo perde la proprietà matematica di avere somma unitaria. La somma delle distribuzioni di probabilità di un'operazione multiciclo sarà infatti pari al numero stesso di cicli necessari per eseguire l'operazione. Un'operazione con mobilità unitaria e tempo di esecuzione pari a n passi di controllo avrà distribuzione di probabilità così impostata: 1 nell'unico passo di controllo in cui è assegnabile l'operazione, ma 1 anche negli n-1 passi successivi. Per operazioni aventi mobilità non nulla il calcolo è più complesso: in pratica è come se le si scomponessero in un numero di frazioni pari al numero di passi di controllo necessari ad eseguirle e si creasse una distribuzione di probabilità per un'operazione nella sua completezza non direttamente ma costruendo prima una distribuzione di probabilità per ciascuna delle frazioni create. Una volta fatto ciò la distribuzione di probabilità relativa all'operazione complessiva si ottiene sommando per ogni passo di controllo i contributi relativi alle singole frazioni dell'operazione. La distribuzione di probabilità della prima frazione è quella che si avrebbe nel caso di un'operazione normale cioè un valore pari a $ \frac{1}{mobilita'}$ per ogni passo di controllo tra l'ASAP e l'ALAP della operazione estremi compresi. Le successive frazioni dell'operazione devono essere schedulate nei passi successivi consecutivi a quello della prima frazione, quindi le corrispondenti distribuzioni di probabilità saranno uguali a quelli della prima frazione ma traslate opportunamente in avanti di un numero di passi di controllo pari all'indice della frazione meno uno.
+\end{itemize}
+
+Una volta applicate queste modifiche è possibile applicare normalmente l'algoritmo.
+
+\subsubsection{Scheduling su unità pipelined}
+L'introduzione della possibilità di utilizzare unità funzionali dotate di pipeline è molto semplice. Si considera che le operazioni eseguite da esse occupino la risorsa e quindi vengano logicamente schedulate solo nel primo ciclo della loro esecuzione. Dal punto di vista dell'algoritmo quindi un'operazione di questo tipo verrà trattata esattamente come un'operazione che possa venir eseguita in un unico passo di controllo. Un'altra interpretazione possibile è quella di considerarla come un'operazione multiciclo ma porre uguale a zero la probabilità che le frazioni successive alla prima vengano schedulate in qualsiasi passo di controllo. Chi dovrà fare distinzione di questo tipo di operazioni e tenere conto del ritardo fra il momento in cui un'operazione viene schedulata e il momento in cui si rende disponibile il suo risultato alle operazioni successive sono gli algoritmi ASAP e ALAP nel corso del calcolo delle finestre temporali e della mobilità.
+
+\subsection{Estensione con vincoli sulle risorse}
+\label{c:ori:longcore:vincoli}
+\subsubsection{Il \emph{force-directed list scheduling}}
+Paulin e Knight hanno proposto un metodo per utilizzare il meccanismo del calcolo delle forze per realizzare uno scheduling con vincoli sulle risorse che punti a minimizzare i passi di controllo ovvero un algoritmo duale di quello fin qui illustrato. L'algoritmo illustrato prende il nome di \emph{Force-Directed List Scheduling} in quanto è una composizione dell'algoritmo Force-Directed e dell'algoritmo \emph{List-Based} (\ref{c:art:sch:time:lb}).
+
+L'approccio del \emph{force-directed list scheduling} è simile a quello del \emph{list-based} tradizionale: la differenza sostanziale consiste nella funzione di priorità utilizzata; nel caso in un passo di controllo il numero di operazioni di un certo tipo pronte e quindi schedulabili sia superiore al numero di risorse disponibili è necessario scegliere di quali operazioni posticipare lo scheduling; la funzione di priorità utilizzata è la forza relativa al restringimento della finestra temporale dell'operazione da quella attuale ad una che escluda il passo di controllo corrente; le operazioni con forza minore sono quelle che se ritardate non aumenterebbero la congestione nell'utilizzo delle unità funzionali nei passi successivi a quello corrente o lo farebbero in misura minore. Una volta calcolato quale operazione ha forza minore, essa viene posticipata; se vi fossero ancora troppe operazioni pronte ad essere schedulate non si sceglierà l'operazione con forza minore già calcolata fra quelle sopravvissute, ma sarà necessario prima di effettuare una nuova scelta ricalcolare le forze interessate e ripetere questo procedimento finchè abbastanza operazioni siano state posticipate. Il ricalcolo è reso non superfluo dal fatto che modificando la mobilità di un'operazione vengono modificate anche le mobilità dei suoi successori, cosa che può modificare il valore delle forze delle operazioni pronte. Il posticipare le operazioni non implica automaticamente che esse assumano priorità maggiore rispetto a quelle passibili di scheduling a partire dal passo di controllo successivo e che esse vengano quindi schedulate nel passo di controllo successivo. Nel caso infatti nel passo successivo non vi fossero nuovamente abbastanza unità funzionali disponibili per soddisfare tutte le operazioni pronte si dovrà ricorrere nuovamente al calcolo delle forze per le operazioni in conflitto. Rimane da illustrare come calcolare le forze. Infatti a differenza dell'algoritmo presentato in \ref{c:ori:core} (l'algoritmo nella sua versione base) non si hanno informazioni riguardo alla mobilità delle operazioni, ne riguardo al numero totale di passi di controllo necessari. Paulin e Knight hanno deciso di utilizzare per questo valore la lunghezza in passi di controllo del percorso critico corrente (esso può infatti aumentare se una delle operazioni critiche è stata posticipata). Stabilito questo valore si applicano gli algoritmi ASAP e ALAP (utilizzando sempre come numero di passi di controllo quello relativo al percorso critico) e quindi si ricavano finestre temporali e mobilità. Evidenziate queste particolarità si può riassumere i passi principali dell'algoritmo:
+\begin{enumerate}
+\item porre il numero di passi controllo pari alla lunghezza del percorso critico misurato in numeri di cicli di controllo;
+\item per ogni passo di controllo:
+\begin{enumerate}
+\item calcolare con ASAP e ALAP le finestre di tempo delle operazioni;
+\item determinare le operazioni che sono pronte nel passo di controllo corrente (operazioni i cui predecessori sono già state schedulati nei passi di controllo precedenti);
+\item finchè il numero di operazioni pronte di un certo tipo supera il numero di unità funzionali che possono eseguire quel particolare tipo di operazione;
+\begin{enumerate}
+\item se tutte le operazioni appartengono al percorso critico il numero totale di passi di controllo deve essere incrementato di un'unità e quindi tutte le finestre temporali dovranno essere ricalcolate;
+\item calcolare le forze dovute al posporre le operazioni del tipo in oggetto;
+\item posticipare lo scheduling dell'operazione con minor forza;
+\item rimuovere l'operazione dalla lista di quelle pronte;
+\end{enumerate}
+\item schedulare nel passo di controllo corrente tutte le operazioni pronte.
+\end{enumerate}
+\end{enumerate}
+
+Questo approccio combina l'alto utilizzo delle unità funzionali, la bassa complessità computazionale ($O(n^2)$ nel caso pessimo, $O(n)$ mediamente) e la valutazione globale di tutti gli effetti collaterali di assegnare un'operazione ad un passo di controllo.
+
+Un modo per sfruttare appieno questa versione dell'algoritmo è quella di utilizzarlo in combinazione con la formulazione originale: in una prima fase si fissa una stima del numero di passi di controllo necessari allo scheduling se esso non è già stato fissato come requisito dell'implementazione che si vuole ottenere; utilizzando questo dato si applica l'algoritmo Force Directed, in particolare integrandovi informazioni relative all'architettura come mostrato in \ref{c:ori:longcore:arch}, per ottenere una stima del numero minimo di unità funzionali necessarie per schedulare tutte le operazioni. A questo punto si applica il force-directed list scheduling utilizzando come numero di risorse quello appena stimato per verificare se non fosse possibile ottenere uno scheduling in un numero di passi di controllo inferiore. Questa combinazione dei due algoritmi permette quindi di esplorare lo spazio di progetto, seppure in due passate, cercando di minimizzare due metriche diverse, tempo e area, che sono solitamente in contrapposizione.
+
+\subsubsection{Calcolo del Numero di Passi di Controllo per Tentativi}
+Esiste un'altra proposta di Paulin e Knight per utilizzare il Force Directed scheduling con vincoli sulle risorse per minimizzare il numero di passi di controllo. La struttura di questa versione dell'algoritmo è la seguente: si individua con ASAP e ALAP il numero minimo di passi di controllo necessario allo scheduling e si applica l'algoritmo classico su questi dati. Se durante la sua esecuzione si verifica che la stima (non il valore relativo alle operazioni già schedulate) di utilizzo di un tipo di unità funzionale superasse il numero di unità effettivamente disponibili, si incrementa di un'unità il numero di passi di controllo totale e conseguentemente si incrementa di uno anche la mobilità di tutte le operazioni estendendone la finestra temporale. Ciò viene applicato non solo alle operazioni ancora da schedulare, ma anche a quelle già schedulate i cui assegnamenti vengono così eliminati. Le finestre temporali risultano comunque più piccole di quelle che si otterrebbero applicando inizialmente ASAP e ALAP con numero di passi di controllo pari a quello attuale. In questo modo si ha un aumento del tempo di esecuzione dell'algoritmo, ma tendenzialmente  non significativo perchè la sua complessità rimane inalterata in quanto le finestre temporali non vengono ricalcolate, ma semplicemente estese.
+
+\subsection{Introduzione di vincoli temporali locali}
+In alcune classi di applicazioni esistono dei vincoli temporali fra coppie di operazioni cioè vincoli sul tempo minimo e massimo che debba intercorrere fra le due computazioni. Questa richiesta è modellizzabile all'interno del Force Directed inserendo delle finte operazioni temporizzanti nel SDG fra le due operazioni incriminate ed associando a queste operazioni fittizie un intervallo di tempo. Esse in un certo senso servono solo come prememoria: non verranno mai schedulate, ma verranno tenute in considerazione per il calcolo delle finestre temporale delle operazioni che collegano, in modo tale che tali finestre rispettino i vincoli memorizzati nell'operazione temporizzante.
+
+\subsection{Tecniche di look-ahead}
+\label{c:ori:longcore:look}
+Per le caratteristiche dell'algoritmo Force Directed, il costo in termini di complessità temporale di utilizzare tecniche di look-ahead non è compensato dai minimi guadagni ottenibili con esse. Tuttavia gli autori stessi hanno proposto un'approssimazione di una tecnica di look-ahead (confrontare \ref{c:art:back:la}) che non comporta un aggravio della complessità dell'algoritmo, ma che ne migliora, a dire degli autori, considerevolmente l'efficienza. L'idea in questo caso è di utilizzare all'interno della formula per il calcolo delle \emph{self-forces} non il valore attuale della somma di probabilità, ma una media pesata fra quello attuale e quello che assumerà dopo l'assegnamento; nel dettaglio la formula utilizzata è: \[Force(i) = DG\_temp(i) \cdot x(i)\] dove 
+\begin{description}
+\item[Force(i)] è il contributo alla forza dello scheduling relativo all'i-esimo passo di controllo;
+\item[DG\_temp(i)] è la somma di probabilità del tipo di unità funzionale che può eseguire l'operazione nell'i-esimo passo di controllo modificata per tenere in considerazione la situazione futura in questo modo: $DG\_temp(i)=DG(i)+x(i)/3$;
+\item[x(i)] è la variazione della probabilità dell'operazione nell'i-esimo passo di controllo a seguito dello scheduling.
+\end{description}
+
+Tuttavia svolgendo la formula si ottiene \[Force(i) = (DG(i) \cdot x(i)) + ((x(i))^2)/3\]
+Il primo termine è presente già nella prima formulazione, quindi soffermandosi sul secondo si può notare che la differenza fra la forza calcolata nel modo tradizionale e quella calcolata con quest'ultimo metodo è pari a \begin{equation}
+\vartriangle Self\-Force = \sum_i \frac{x^2(i)}{3}
+\end{equation}
+
+Analizzando questa formula è immediato constatare che essa non dipenda dalle somme di probabilità ma solamente dalle variazioni nelle distribuzioni di probabilità dell'operazione  nei vari passi. Queste variazioni non dipendono dagli specifici passi di controllo in cui è possibile schedulare l'operazione, ne dallo specifico passo in cui si sceglie di assegnare l'operazione o dal suo tipo ma unicamente dalla mobilità posseduta da essa. La formula può essere quindi riscritta in questo modo, indicando con \emph{m} la mobilità dell'operazione prima dello scheduling:
+\begin{equation}
+\vartriangle Self\-Force  = \frac{(\frac{m-1}{m})^2 - (m-1)(\frac{1}{m})^2}{3} = \frac{(m^2 - 3m + 2)}{3m^2}
+\end{equation}
+
+Quello che si è ottenuto è quindi una correzione delle \emph{self-force} che dipende unicamente dalla mobilità dell'operazione in esame e che quindi non influenza direttamente la scelta del passo di controllo di una certa operazione, ma tuttalpiù l'ordine in cui viene scelta la prossima operazione da assegnare.

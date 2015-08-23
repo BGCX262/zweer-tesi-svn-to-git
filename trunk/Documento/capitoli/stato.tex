@@ -1,0 +1,79 @@
+\chapter{Analisi dell'applicazione e descrizione del problema}
+\label{c:stato}
+
+La trattazione va ora a prendere in esame la piattaforma di raccomandazione com'era prima di questo lavoro di tesi, esaminandone attentamente i difetti che poi hanno portato alla volontà di ripartire da zero per costruire una piattaforma più dinamica e agile.
+
+\section{La partenza}
+\label{c:stato:part}
+
+Alla creazione della piattaforma certo non si pensava che risultasse qualcosa di così complesso: si sentiva solamente la necessità di implementare qualche algoritmo di raccomandazione, più per esercizio che per altro: non si era presa in esame una possibile integrazione dei vari algoritmi, per questo furono creati completamente diversi gli uni con gli altri\nota{Come esempio basti citare il nome del parametro con cui veniva passato il modello già creato: in ogni algoritmo che implementa questa possibilità, nemmeno in tutti, si usa un nome diverso che riflette le caratteristiche del determinato modello.} e ognuno con i suoi parametri.
+
+Procedendo col lavoro si evidenziarono i limiti di queste strutture, e soprattutto i limiti di MatLab che seppur semplificando molte operazioni, non riesce a raggiungere le velocità tipiche del C e di altri linguaggi di programmazione più a basso livello. Fu così che le funzioni più impegnative vennero implementate in C, riuscendo a garantire per lo meno standard prestazionali di gran lunga superiori a quelli precedenti.
+
+Continuava a rimanere, però, sempre un qualcosa di slegato e fine a se stesso, lontano dal suscitare il ben che minimo interesse.
+
+\section{NetFlix e i test}
+\label{c:stato:nf}
+
+Finalmente arrivò dall'esterno una spinta per iniziare a dare un senso a tutti gli algoritmi inseriti e funzionanti: un provider di \iptv statunitense indisse una competizione per trovare l'algoritmo di raccomandazione migliore al mondo. Da tutte le migliori università e centri di ricerca iniziarono ad arrivare tonnellate di algoritmi che vennero processati da NetFlix\cite{Netflix} stesso per verificarne la bontà.
+
+Alla fine vinse la competizione Yehuda Koren col suo algoritmo ""Asymmetric SVD'' (cfr. \ref{c:algo:algo:coll:kor}), ma il sistema in oggetto di questo lavoro di tesi iniziò a implementare tutte quelle metodologie di test che hanno permesso a NetFlix di valutare i vari lavori.
+
+Nacque così l'idea di organizzare i vari algoritmi, che comunque erano ancora disuniti e privi di un filo conduttore che ne guidasse l'implementazione, per lo meno in directory e nel numero di input. Così facendo ogni metodo di test poteva utilizzare qualsiasi algoritmo per creare il modello e quindi la raccomandazione da valutare.
+
+Contemporaneamente all'implementazione dei test si cercò anche si sistemare gli algoritmi già visti per poterli migliorare e adattare alla nuova piattaforma: vennero infatti creati degli studi per sistemare alcuni algoritmi particolarmente complessi, in modo da semplificarli e renderli più adatti alla piattaforma che ormai era stata prodotta, seppur ancora adatta solamente a chi ci lavora quotidianamente.
+
+\section{Le novità}
+\label{c:stato:news}
+
+Iniziarono finalmente ad arrivare anche le prime novità apportate alla piattaforma: prima fra tutte l'antireshuffling (cfr. \ref{c:algo:compo}) che introduceva una logica nuova nella creazione delle liste di raccomandazione.
+
+Quest'aggiunta, però, veniva implementata scontrandosi contro la frammentarietà dell'opera fino ad allora prodotta, quindi era stata creata una struttura incredibilmente fragile di funzioni che necessitavano di parametri incredibilmente specifici per funzionare: utilizzare queste funzionalità risultava praticamente impossibile se prima non si veniva sottoposti a una sessione di training.
+
+Man mano furono anche aggiunte una serie di metodologie di test differenti, prese in letteratura e implementate in modo sommario, al solo fine di ottenere determinati risultati ma senza la necessità di legare le varie strutture di dati o i risultati stessi.
+
+\section{Lo stop}
+\label{c:stato:stop}
+
+Era questo il momento giusto per fermarsi e riflettere: per quanto tempo poteva ancora essere interessante una struttura del genere, completamente frammentata e in cui ogni riga di codice era fine a se stessa? Quanto poteva servire una piattaforma simile, dove comparivano tanti risultati che se considerati contemporaneamente risultavano inutili in quanto slegati?
+
+Si decise quindi di fermare, almeno in parte, la ricerca e focalizzare l'attenzione sul rifacimento dell'intero sistema, in maniera più intuitiva e soprattutto avendo sott'occhio l'intero lavoro: non si pensava più di dover solamente costruire alcuni algoritmi come esercizio, ma c'era la necessità di permettere la scalabilità della struttura, la facile integrazione di nuovi algoritmi che potessero essere presi facilmente dal sistema e utilizzati attraverso semplici API.
+
+Anche le metodologie di test dovevano essere raccolte e adattate al sistema, in modo che ne risultassero facili sia l'ampliamento sia la modifica.
+
+Ormai si era arrivati al punto di impiegare più tempo per comprendere la piattaforma che per implementare nuove funzionalità o studiarne i risultati.
+
+\section{Altri esempi esterni a questo progetto}
+\label{c:stato:altri}
+
+Per cercare di capire meglio come organizzare il lavoro e soprattutto su quali aspetti agire, si è guardato anche ad altri progetti realizzati in altre parti del mondo. Tra tutti quelli trovati, si è deciso di citarne solamente alcuni in quanto costituiscono un campione esemplare.
+
+\subsection{Open Source Recommender System Software Workshop}
+\label{c:stato:altri:work}
+
+Viene inserito questo progetto\cite{OSWorkshop} per primo in quanto costituisce il miglior tentativo (anche se poi si è rivelato il peggiore visto che è stato cancellato quasi subito) di realizzare una piattaforma opensource dedicata ai sistemi di raccomandazione.
+
+L'idea di fondo degli sviluppatori che ebbero l'idea era creare una comunità di studenti e professionisti intorno a questa piattaforma, in modo da non dipendere sempre da quanto sviluppato dalle aziende: la loro idea era che le soluzioni a pagamento fossero troppo poco trasparenti, e quindi si rivelassero alla lunga non interessanti da un punto di vista puramente didattico. 
+
+Proprio per questo si volle creare un progetto aperto a tutti con la speranza che, grazie al web e alla disponibilità degli utenti, si riuscisse a dare alla luce una valida alternativa alle piattaforme proprietarie, rendendo i sistemi di raccomandazione un qualcosa di più facilmente capibile e utilizzabile. Inoltre una soluzione del genere poteva essere accolta positivamente anche dagli sviluppatori e dalle aziende del settore, che l'avrebbero presa come base da ampliare: fa sempre comodo avere delle fondamenta comode e indipendenti per svilupparci sopra le proprie idee.
+
+Sfortunatamente tutti questi buoni propositi non ebbero seguito in quanto la prima conferenza sull'argomento venne cancellata in quanto non vi erano iscritti, e dopo poco tempo, anche l'intero progetto morì dal momento che la comunità sognata non si era creata. A un anno dalla data della conferenza, l'unica traccia che rimane di questo lavoro è il \grassetto{Duine Framework}\cite{Duine}, lavoro dei tre ideatori del workshop, che però risulta essere ancora a livello di bozza: ideato per essere il punto di riferimento per i sistemi di raccomandazione, appare con una struttura estremamente pesante ed elaborata. Al suo interno implementa solamente un paio di algoritmi e una sola metodologia di test. Inoltre anche di questo progetto non si hanno notizie da più di un anno e mezzo.
+
+\subsection{Apache Mahout}
+\label{c:stato:altri:mah}
+
+Direttamente dall'\corsivo{Apache software foundation} si è cercato di realizzare una libreria\cite{Mahout} in grado di gestire l'apprendimento automatico. In questo modo i sistemi di raccomandazione sono una delle sue possibili applicazioni: è sufficiente includere gli algoritmi visti all'inizio di questa trattazione, e la libreria è in grado di raccomandare item di svariati tipi.
+
+Un'altra caratteristica molto importante di questo progetto, è la facilità con cui gestisce enormi carichi di dati: la struttura di base è \grassetto{Hadoop}\cite{Hadoop}, sempre di Apache, che permette un \corsivo{mapping} incredibilmente efficace dei dati, in modo da non risentirne l'aumento.
+
+In modo nativo vengono gestiti sia gli algoritmi Content-Based, sia quelli Collaborativi.
+
+Questo progetto nacque per vari motivi: 
+
+\begin{itemize}
+	\item Si voleva anzitutto creare una comunità intorno al \corsivo{machine learning} in quanto tutti gli altri progetti esistenti non riuscivano a raccogliere molti sviluppatori indipendenti disposti a condividere le proprie idee e i propri risultati;
+	\item Non vi era una buona documentazione in rete che desse un'idea del lavoro che è stato fatto fin qui, ma ognuno era convinto di dover reinventare la ruota: si è voluto creare un punto di partenza per tutti;
+	\item Nessun prodotto garantiva un'elevata scalabilità in quanto la maggior parte, essendo sviluppati a livello accademico, venivano usati a scopi puramente didattici.
+\end{itemize}
+
+Col passare del tempo vennero assorbiti progetti minori. Uno tra tutti è Taste\cite{Taste}, nato nel 2006 come piattaforma di test per la competizione Netflix\cite{NetflixComp}, è un insieme di classi Java che permette creare modelli e liste di suggerimenti in base a matrici \urm fornite. I limiti di quest'applicazione furono evidenti fin dall'inizio: le strutture matematiche non erano gestite alla perfezione e soprattutto aveva problemi con le grandi quantità di dati tipiche di Netflix: proprio per questo motivo si decise la fusione con Mahout e il conseguente abbandono del progetto.

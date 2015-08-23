@@ -1,0 +1,26 @@
+\chapter{Conclusioni}
+\label{c:conc}
+
+La reingegnerizzazione dell'applicazione Matlab per i sistemi di raccomandazione è stata una tappa obbligata nello sviluppo della piattaforma.
+
+I benefici sono evidenti:
+
+\begin{description}
+	\item[Miglioramento nella gestione della memoria] in quanto prima dell'intervento le matrici venivano passate alle varie funzioni e memorizzate in modo completo. Ora invece si cerca di utilizzare un sistema simile ai puntatori di alcuni linguaggi di programmazione.
+	\item[Riduzione dello spazio in memoria] poiché sono stati eliminati un incredibile numero di file inutili che erano stati creati solo come prove o fini a se stessi. A dimostrazione di ciò si è passati da una memoria sul filesystem di oltre $ 4.5 Gb $ a poco più di $ 31 Mb $\nota{Gran parte dello spazio richiesto dall'applicazione prima di questo lavoro era occupato da enormi matrici \urm e \icm. Nella nuova piattaforma non sono state incluse, ma al loro posto sono state inserite matrici molto più piccole, ma sempre esemplificative}.
+	\item[Informazioni più accessibili] dal momento che i vari risultati vengono memorizzati all'interno degli oggetti che li hanno prodotti. In questo modo non è più necessario, da parte dell'utente, utilizzare numerose variabili poiché ne è sufficiente una per ogni oggetto istanziato.
+	\item[Espandibilità] per quanto riguarda i nuovi algoritmi e le nuove metodologie di test. Grazie all'utilizzo di apposite API è possibile implementare nuove funzioni che gli oggetti vanno a recuperare in modo automatico, senza che l'utente debba tutte le volte specificare il percorso dei file che gli interessano.
+	\item[Facilità d'uso] dal momento che ci si basa su un esiguo numero di comandi con i quali si riesce a compiere praticamente qualsiasi tipo di operazione. Starà poi all'utente esperto disporre dei parametri come meglio crede per ottenere un diverso livello di interazione con l'algoritmo.
+	\item[Esportazione] per poter visualizzare i risultati graficamente o importarli in altri sistemi in modo, ad esempio, di valutare più facilmente certe statistiche non implementate in questa sede.
+\end{description}
+
+\section{Sviluppi futuri}
+\label{c:conc:svi}
+
+Come epilogo di questo lavoro vengono inserite delle possibilità di sviluppo che si sono presentate durante lo studio dell'applicazione. Non tutte sono prioritarie, anzi, alcune possono definirsi quasi inutili, ma per dovere di cronaca vengono qui menzionate:
+
+\begin{itemize}
+	\item Realizzazione di un'interfaccia grafica per consentire l'uso dell'applicazione non solo da riga di comando. Questa potrebbe aprire la piattaforma, ma anche i sistemi di raccomandazione in generale, a un pubblico sempre più vasto, ma soprattutto non prettamente di addetti ai lavori. Un'interfaccia grafica poi permetterebbe anche di avere un'idea più precisa di quello che si sta realizzando, sia per quanto riguarda le liste di suggerimenti, sia per quanto riguarda i risultati dei test.
+	\item Esportare i risultati dei test in grafici, in modo da visualizzarne meglio l'andamento. In questo modo si vuole offrire un'alternativa all'esportazione testuale che è già presente, ma quasi inutile in considerazione della mole di risultati. Inoltre la codifica \csv adottata mal si presta a rappresentare enormi array di valori in quanto bisogna creare troppe convenzioni per i separatori dei dati.
+	\item Una migliore implementazione degli algoritmi, in modo da considerare le matrici a colonne e non più a righe. Questo porterebbe a un incremento notevole nelle performance: l'ideale sarebbe implementare tutte le funzioni in C e quindi costruire in Matlab solamente ""l'interfaccia''. Parallelamente a questo lavoro, però, non sono stati condotti studi che ne verificassero l'effettivo miglioramento anche per operazioni brevi.
+\end{itemize}

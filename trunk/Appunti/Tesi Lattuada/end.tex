@@ -1,0 +1,22 @@
+\chapter{Conclusioni e possibili sviluppi futuri}
+\label{c:end}
+\thispagestyle{empty}
+
+\vspace{0.5cm}
+
+In questo lavoro di tesi è stato proposto un possibile algoritmo di scheduling basato sul Force Directed che consente di cercare di minimizzare il numero di unità funzionali allocate in un sistema estraendo il massimo parallelismo possibile dalla specifica del sistema descritto attraverso un SDG. A differenza degli algoritmi tradizionali, il metodo proposto permette di considerare contemporaneamente vincoli temporali e vincoli relativi alle risorse. Questa completezza è pagata in termini di tempi di computazione che rispetto ad altri algoritmi più semplici sono notevolmente maggiori. Tuttavia considerando i guadagni non trascurabili in termini di area e conseguentemente in termini di potenza dissipata si può essere disposti a pagare questo tempo in fase di progettazione del sistema.
+
+I risultati dei test proposti hanno dimostrato la bontà delle modifiche effettuate e l'utilità nell'aver creato un algoritmo che gestisca contemporaneamente vincoli temporali e sulle risorse cercando di minimizzare una metrica relativa al costo dell'implementazione.
+
+La versione dell'algoritmo presentata si è quindi dimostrata sufficientemente completa e potrebbe anche essere considerata come definitiva. Esistono tuttavia ancora dei possibili margini di miglioramento e delle possibili estensioni. Infatti ci sono ancora degli aspetti secondari rimasti insoluti all'interno del lavoro presentato che potrebbero costituire l'oggetto di futuri lavori:
+\begin{itemize}
+\item individuare un criterio più accurato per assegnare la priorità alle operazioni, in particolare determinando il criterio per l'ordinamento totale dei blocchi basici che fornisca i migliori risultati in termini di unità funzionali allocate e tempo di computazione, ed eventualmente introdurre la possibilità di assegnare priorità diverse alle operazioni appartenenti ad uno stesso blocco basico (cioè schedulare un blocco basico a pezzi invece che interamente), in modo tale da ridurre il tempo di computazione anche in problemi privi di costrutti condizionali;
+
+\item estendere l'algoritmo modificato per minimizzare altri aspetti del costo relativo all'implementazione quali numero di registri o costo delle interconnessioni;
+
+\item individuare come inserire all'interno dell'algoritmo informazioni relative al diverso costo delle unità funzionali in presenza di vincoli; in questo caso infatti l'algoritmo che è stato presentato cerca di minimizzare il numero complessivo di unità funzionali appartenenti a tipi non vincolati indistintamente; sicuramente però si vorrebbe che la minimizzazione del numero di risorse non vincolate di tipo più costoso fosse favorita rispetto a quella delle unità più economiche; l'algoritmo originale veniva indirizzato in questo senso attraverso pesi, calcolati sulla base del costo delle unità funzionali, attribuiti alle diverse somme di probabilità; è evidente che lo stesso metodo deve essere applicato anche nella versione proposta, ma sussiste il problema di come combinare i pesi derivanti dal costo delle unità funzionali con quelli relativi ai vincoli;
+
+\item valutare se vi sia un effettivo miglioramento nella qualità dei risultati introducendo un calcolo meno approssimativo delle \emph{predecessors' and successors' forces} che tenga conto delle dipendenze indirette fra le riduzioni delle mobilità di operazioni contemporanee che sono predecessori o successori dell'operazione di cui si sta esaminando l'assegnamento;
+
+\item soprattutto da un punto di vista implementativo, considerare la possibilità di ridurre il tempo di computazione dell'algoritmo, nel caso di presenza di vincoli, a scapito della memoria da esso utilizzata: tenendo memorizzati i dati relativi ad ogni nodo esaminato nell'esplorazione dell'albero di ricerca è possibile ridurre il numero di percentuali di occupazione o di forze da ricalcolare in caso di backtracking.
+\end{itemize}

@@ -1,0 +1,13 @@
+\begin{slide}{Aggiunta dei vincoli sulle risorse}
+Le modifiche effettuate per consentire l'aggiunta dei vincoli sulle risorse sono:
+\begin{itemize}
+\item \red aggiunta dei pesi \black alle somme di probabilità e quindi alle forze: il peso è pari all'inverso del numero di unità funzionali disponibili;
+\item \red introduzione del meccanismo di backtracking \black: 
+\begin{itemize}
+\item l'algoritmo può produrre una soluzione non accettabile perchè viola un vincolo;
+\item uno o più assegnamenti effettuati vengono cancellati per riottenere una soluzione parziale accettabile;
+\item l'algoritmo esegue nuovi assegnamenti per costruire una soluzione accettabile.
+\end{itemize}
+\end{itemize}
+
+\end{slide}

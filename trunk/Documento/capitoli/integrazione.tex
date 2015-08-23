@@ -1,0 +1,33 @@
+\chapter{Integrazione in un Sistema Reale}
+\label{c:int}
+
+Tutto quanto visto finora non è mai stato messo a confronto con un sistema reale: potrebbe praticamente servire una piattaforma simile fuori dall'ambito accademico? Quali sono le sue limitazioni e quali i suoi punti di forza? 
+
+Si cercherà ora di sottoporre questo sistema alle diverse esigenze che si possono incontrare al di fuori di un contesto di testing.
+
+\section{Integrazione}
+\label{c:int:int}
+
+Il principio cardine di tutta la piattaforma è la facilità di implementazione: la struttura a oggetti permette una gestione semplice di tutto il flusso di dati in quanto non vengono allocate troppe variabili per memorizzare i vari stati dell'applicazione. 
+
+Anche i metodi sono stati pensati per rendere intuitivo l'utilizzo: non ne esistono di superflui, ognuno ha una sua precisa funzione. Tramite essi si può accedere a tutte le funzionalità dell'oggetto, senza dover avere una conoscenza approfondita degli attributi e dei parametri.
+
+L'utente avanzato, invece, sarà interessato a tutti i diversi parametri per agire direttamente sul metodo: per esempio, la creazione di un modello può avvenire in modo differente in base alle opzioni che vengono passate. Questa gestione personalizzata può influire positivamente sulla riuscita di una particolare raccomandazione e proprio per questo durante l'implementazione si è cercato di tenere sempre in considerazione tutti i possibili parametri in modo da lasciare all'utente l'opzione di variare alcune condizioni. Esemplificativo è il passaggio del modello ai metodi che lo creano: in questo modo la funzione ritorna subito evitando calcoli inutili.
+
+\section{Ampliamento e API}
+\label{c:int:api}
+
+In campo informatico l'evoluzione è rapidissima ed è estremamente difficoltoso stare al passo con questo susseguirsi di aggiornamenti e nuove idee. Proprio per questo motivo la piattaforma è stata creata a moduli: ogni algoritmo di raccomandazione e ogni metodologia è una funzione a se stante, richiamata dal metodo, sulla quale non ci sono particolari controlli, a parte richiedere un output e certi parametri di input. Questa soluzione è stata adottata per consentire una libertà totale all'ampliamento del sistema: implementare un nuovo algoritmo è facilissimo e l'operazione viene riconosciuta subito dall'oggetto.
+
+Analogamente s'è scelto di non creare costrutti rigidi per i parametri dei singoli metodi: si possono passare anche oggetti incredibilmente complessi, sta poi alla funzione chiamata saperli gestire. Esemplare da questo punto di vista è il modello della raccomandazione: all'oggetto non interessa come venga creato o come sia strutturato. \`E solo memorizzato e quindi passato alla funzione che genera la lista di suggerimenti. Quest'assenza di controllo rende possibile la gestione della struttura dati da parte dell'implementatore, che per questo motivo non è più costretto a ""nascondere'' i propri oggetti dentro strutture articolate come si era soliti fare in alcuni punti della vecchia applicazione.
+
+\section{Risorse Computazionali}
+\label{c:int:ris}
+
+La costruzione del modello è una fase computazionalmente molto impegnativa: il calcolatore deve analizzare e operare su migliaia di dati e il motore di Matlab non ne è sempre all'altezza. Le maggiori difficoltà si sono riscontrate con le matrici, in quanto la maggior parte degli algoritmi le analizza una riga alla volta: il programma, al contrario, le memorizza per colonne, e quindi risulta molto dispendioso estrarre un singolo elemento da una colonna. Proprio per questo una prima ottimizzazione si è verificata introducendo le matrici trasposte, ma ancora in alcune fasi il sistema risulta essere troppo lento.
+
+Le operazioni più lunghe sono state implementate in \corsivo{C} in quanto Matlab supporta l'esecuzione di funzioni in questo linguaggio in modo quasi nativo (è sufficiente disporre di un compilatore sulla propria macchina). In questo modo il tempo di esecuzione di alcuni metodi è ridotto drasticamente, rendendo possibile anche la fase di testing (che richiede svariate creazioni di un modello) in tempi ragionevoli.
+
+Nonostante questo, però, risulta ancora remota la possibilità di poter utilizzare una piattaforma Matlab in un sistema reale: si tratta di un linguaggio di livello troppo elevato e quindi troppo lento per poter accogliere le enormi quantità di dati dei sistemi attualmente in circolazione (\iptv e servizi di \vod). L'idea più semplice è eseguire un porting in C, ma al momento non risulta essere di particolare interesse in quanto si perderebbe tutta la comodità nella gestione dei dati numerici che la programmazione Matlab fornisce. Per ottenere strutture simili in altri linguaggi bisogna disporre di una conoscenza estremamente approfondita, mentre il principio su cui si basa la piattaforma è proprio la semplicità.
+
+Senz'altro questa problematica può rappresentare un buon punto di partenza per successivi lavori di ottimizzazione, dal momento che bisognerebbe mettere mano a funzioni che interagiscono a coppie, e quindi che non dipendono dall'output di qualcun altro.

@@ -1,0 +1,82 @@
+%% -*- mode: latex; mode: reftex; tex-main-file: "slides.tex"; reftex-default-bibliography: ("../thesis") -*-
+
+\documentclass[total,pdf,mulab,nocolorBG]{prosper}
+%\documentclass[final,total,pdf,slideColor,mulab,colorBG]{prosper}
+%\usepackage[mulab,highlight,toc,notes]{HA-prosper}
+
+\RequirePackage[italian]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{amsmath}
+\usepackage{rotating}
+\usepackage{natbib}
+\usepackage{xspace}
+\usepackage{verbatim}
+\usepackage{pstricks,pst-node,pst-text,pst-3d}
+\usepackage{graphicx}
+\usepackage{subfigure}
+
+
+
+\bibpunct[, ]{[}{]}{,}{n}{,}{,}
+\bibliographystyle{plainnat}
+
+\newrgbcolor{mulablight}{0.29 0.53 0.85}
+\renewcommand{\sbodycolor}{\black}
+\renewcommand{\stitlecolor}{\black}
+\renewcommand{\sfootcolor}{\black}
+\renewcommand{\firstslidebodycolor}{\black}
+\renewcommand{\firstslidetitlecolor}{\black}
+\renewcommand{\firstslidesubtitlecolor}{\black}
+
+
+\newcommand{\newtextcommand}[2]{\newcommand{#1}{\begingroup#2\endgroup\xspace}}
+\newcommand{\renewtextcommand}[2]{\renewcommand{#1}{\begingroup#2\endgroup\xspace}}
+\newcommand{\providetextcommand}[2]{\providecommand{#1}{\begingroup#2\endgroup\xspace}}
+
+\renewcommand{\emph}[1]{\bgroup\itshape#1\egroup}
+
+\graphicspath{
+  {figures/}
+}
+
+\title{La Sintesi ad Alto Livello: \\ Estensioni al Force Directed Scheduling}
+\subtitle{}
+\author{Marco Lattuada}
+\theday{26}{07}{2006}
+\email{}
+\advisor{Prof. Fabrizio Ferrandi}
+\coadvisor{}
+
+
+\DefaultTransition{Replace}
+
+
+\begin{document}
+
+\maketitlemulab
+
+\include{obiettivo}
+\include{scheduling}
+\include{scheduling2}
+\include{original}
+\include{dati}
+\include{forza}
+\include{estensioni}
+\include{limiti}
+\include{eleModifiche}
+\include{modForza}
+\include{modForza2}
+\include{nextassign}
+\include{complessita}
+\include{motivazioni}
+\include{modVincoli}
+\include{tree}
+\include{modBinding}
+\include{bench0}
+\include{bench1}
+\include{bench4}
+\include{bench2}
+\include{bench3}
+\include{concl}
+
+\end{document}

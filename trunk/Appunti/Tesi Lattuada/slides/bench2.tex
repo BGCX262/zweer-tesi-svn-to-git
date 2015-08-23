@@ -1,0 +1,20 @@
+\begin{slide}{Risultati Sperimentali vs List-Based}
+\begin{center}
+Guadagno in termini di unità funzionali allocate vincolate
+\begin{tabular}{|l|c||c|c||c|c|}
+\hline
+\multicolumn{2}{|c||}{} & \multicolumn{2}{|c||}{Kim}&  \multicolumn{2}{|c|}{Maha} \\
+\hline
+Unità Funzionale & Vincolo & LB & FD & LB & FD \\
+\hline
+CMP &2 & & & 2 & 1 \\
+indirect\_ref & inf & 1 & 2 & 1 & 1 \\
+MINUS & 2 & 2 & 1 & 2 & 1 \\
+PLUS & 2 & 2 & 2 & 1 & 1 \\
+READ\_COND & inf & 1 & 1 & 2 & 1 \\
+\hline
+\multicolumn{2}{|l||}{Tempo computazione} & 0.11 & 0.18 & 0.14 & 0.12 \\
+\hline
+\end{tabular}
+\end{center}
+\end{slide}
